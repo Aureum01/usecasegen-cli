@@ -71,15 +71,35 @@ def _run_hook(command: str, context: dict[str, str]) -> None:
         logger.warning("Hook failed command=%s code=%d", resolved, completed.returncode)
 
 
-def _run_with_stage_progress(idea: str, config: Config, provider_instance) -> object:
-    """Run generation with live stage progress and return document."""
-    with Progress(
-        SpinnerColumn(),
+def _build_progress(include_mofn: bool = False) -> Progress:
+    """Build a Windows-safe progress renderer."""
+    if sys.platform == "win32":
+        return Progress(
+            TextColumn("[green]{task.description}"),
+            TimeElapsedColumn(),
+            console=console,
+        )
+    if include_mofn:
+        return Progress(
+            SpinnerColumn(spinner_name="dots", style="green"),
+            TextColumn("{task.description}"),
+            BarColumn(bar_width=30),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        )
+    return Progress(
+        SpinnerColumn(spinner_name="dots", style="green"),
         TextColumn("{task.description}"),
         BarColumn(bar_width=30),
         TimeElapsedColumn(),
         console=console,
-    ) as progress:
+    )
+
+
+def _run_with_stage_progress(idea: str, config: Config, provider_instance) -> object:
+    """Run generation with live stage progress and return document."""
+    with _build_progress() as progress:
         tasks = [
             progress.add_task("Stage 1/3  Analysing idea...", total=1, start=False),
             progress.add_task("Stage 2/3  Writing use case...", total=1, start=False),
@@ -171,14 +191,7 @@ def run(
     provider = ProviderFactory.create(config)
     generated_count = 0
     failed_count = 0
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("{task.description}"),
-        BarColumn(bar_width=30),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
+    with _build_progress(include_mofn=True) as progress:
         task = progress.add_task(
             "Generating 0 of 0",
             total=len(selected_use_cases),
@@ -270,14 +283,7 @@ def batch(
     provider_instance = ProviderFactory.create(config)
     successes = 0
     failures = 0
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("{task.description}"),
-        BarColumn(bar_width=30),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
+    with _build_progress(include_mofn=True) as progress:
         task = progress.add_task("Generating 0 of 0", total=len(ideas))
         for index, item_idea in enumerate(ideas, start=1):
             idea_slug = _slug_from_text("", item_idea)
