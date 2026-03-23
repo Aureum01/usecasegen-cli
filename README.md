@@ -139,29 +139,108 @@ ucgen "supplier invoice approval" --template enterprise
 
 ---
 
-## Batch generation
+## Generating Multiple Use Cases
 
-From a text file (one idea per line):
+There are three ways to generate multiple use cases depending on your
+situation.
+
+### Option 1 — Batch file (quickest for ad-hoc generation)
+
+Create a plain text file with one idea per line:
+```
+# ideas.txt
+patient books appointment
+patient cancels appointment
+receptionist checks in patient
+admin views daily schedule
+patient receives reminder
+```
+
+Run batch generation:
 ```bash
 ucgen batch ideas.txt
 ```
 
-From a structured YAML file:
+All use cases are generated sequentially and written to your
+`output_dir`. Lines starting with `#` and blank lines are skipped.
+
+---
+
+### Option 2 — Project file (recommended for real projects)
+
+Create a `ucgen.yaml` in your project root:
 ```bash
-ucgen batch ideas.yaml
+ucgen init-project "MyProject" --domain healthcare
 ```
+
+Edit `ucgen.yaml` to define your use cases:
 ```yaml
-# ideas.yaml
+project:
+  name: DentalClinic
+  domain: healthcare
+
 defaults:
-  provider: groq
-ideas:
-  - title: "User registers account"
-    actor: Visitor
+  provider: ollama
+  model: mistral
+  output_dir: ./use-cases
+
+actors:
+  - name: Patient
+    type: human
+  - name: Receptionist
+    type: human
+
+use_cases:
+  - id: UC-001
+    title: Book Appointment
+    actor: Patient
+    goal: Reserve an available slot with a preferred dentist
     priority: high
-  - title: "Admin resets password"
-    actor: Admin
-    priority: medium
+    tags: [booking, core]
+
+  - id: UC-002
+    title: Cancel Appointment
+    actor: Patient
+    goal: Cancel an existing confirmed appointment
+    priority: high
+    tags: [booking, core]
 ```
+
+Generate all pending use cases:
+```bash
+ucgen run
+```
+
+Generate by ID or tag:
+```bash
+ucgen run --id UC-001
+ucgen run --tag core
+```
+
+Check status at any time:
+```bash
+ucgen status
+```
+
+Generated files are organised into a project subfolder:
+```
+use-cases/
+  dentalclinic/
+    UC-001-book-appointment.md
+    UC-002-cancel-appointment.md
+```
+
+---
+
+### Option 3 — Generate a report from all use cases
+
+Once you have multiple use cases generated, build a single HTML report:
+```bash
+ucgen report --dir use-cases/dentalclinic --output use-cases/dentalclinic/report.html --title "DentalClinic Use Cases"
+```
+
+Open `report.html` in any browser. No server required — fully
+self-contained single file with navigation, tables, and all sections.
 
 ---
 

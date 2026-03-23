@@ -1,0 +1,53 @@
+# ucgen.yaml — Project use case definition
+# Run: ucgen run       (generate all pending)
+# Run: ucgen status    (check generation status)
+
+project:
+  name: DentalClinic
+  domain: healthcare
+  stack: python-fastapi-postgres
+  version: "1.0"
+
+defaults:
+  provider: ollama
+  model: mistral
+  template: default
+  output_dir: ./use-cases
+
+actors:
+  - name: Patient
+    description: Registered patient with an active account
+    type: human
+
+  - name: BookingSystem
+    description: Internal booking and schedule allocation service
+    type: system
+
+use_cases:
+  - id: UC-001
+    title: Book Appointment
+    actor: Patient
+    goal: Reserve an available slot with a preferred provider
+    priority: high
+    tags: [booking, core]
+    status: pending
+
+  - id: UC-002
+    title: Cancel Appointment
+    actor: Patient
+    goal: Cancel an existing confirmed appointment with optional reason
+    priority: high
+    tags: [booking, core]
+    status: pending
+
+  - id: UC-003
+    title: Check In Patient
+    actor: BookingSystem
+    goal: Record patient arrival and notify the assigned provider
+    priority: medium
+    tags: [reception]
+    status: pending
+
+# hooks:
+#   on_generate: "git add {file}"
+#   on_batch_complete: "echo 'Generated {count} use cases for {project}'"

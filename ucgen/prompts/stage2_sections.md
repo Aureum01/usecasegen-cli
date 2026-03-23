@@ -34,9 +34,14 @@ Output ONLY valid JSON. No preamble. No explanation. No code fences.
 Rules:
 
     preconditions: 3-6 items. Verifiable states, noun phrases, not actions.
-    minimal_guarantee: ONE sentence only. No payment examples.
-    Structure: "[entity] attempt written to [table] with [field1], [field2], [timestamp] even if [failure]"
-    For this use case only. Do not write about payment, cards, or financial transactions unless the use case is about payment.
+    minimal_guarantee: ONE sentence only.
+    Structure: "[primary entity] attempt written to [audit table] with [field1], [field2], [timestamp] even if [failure condition]"
+    The entity names and table names must come from the use case domain in intake_json.
+    Do NOT use payment, card, charge, or financial language unless the use case domain is payment or finance.
+    Do NOT copy the structure example verbatim — derive the entity and table names from the actual use case.
+    Example for a booking domain: "Booking attempt written to appointment_audit with patient_id, provider_id, slot_datetime, and timestamp even if slot is unavailable."
+    Example for a logistics domain: "Shipment attempt written to shipment_audit with sender_id, recipient_id, parcel_id, and timestamp even if carrier is unreachable."
+    Example for an auth domain: "Login attempt written to auth_audit with user_id, ip_address, and timestamp even if credentials are invalid."
     postconditions: REQUIRED. 3-5 items. Never leave empty.
     Write what is verifiably true after success.
     Example: "Appointment record exists with status=confirmed", "Provider calendar updated with new slot", "Confirmation email queued for delivery"

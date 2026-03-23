@@ -29,6 +29,15 @@ dev = [
   "mypy>=1.10",
   "types-PyYAML>=6.0",
 ]
+all = [
+  "PyYAML>=6.0",
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "pytest-mock>=3.12",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "types-PyYAML>=6.0",
+]
 
 [project.scripts]
 ucgen = "ucgen.cli:app"

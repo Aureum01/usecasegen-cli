@@ -1,1 +1,11 @@
-# CURRENT — empty on fresh install. Run: ucgen context
+Active mistakes: M-001
+Active decisions: D-001, D-002, D-003, D-004, D-005
+Last updated: 2026-03-23T17:04:11.920048+00:00
+Based on: memory/mistakes.idx
+pyproject.toml
+ucgen/assembler.py
+ucgen/cli.py
+ucgen/generator.py
+ucgen/project_runner.py
+ucgen/prompts/stage2_sections.md
+ucgen/reporter.py

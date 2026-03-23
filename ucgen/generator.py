@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -206,9 +207,15 @@ async def generate(
     entities = await _run_entities(intake, sections, config, provider, debug=debug)
     if on_stage_complete is not None:
         on_stage_complete(3)
+    raw_markdown = assemble(intake, sections, entities, config, duration_ms=0)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
-    raw_markdown = assemble(intake, sections, entities, config)
-    raw_markdown = raw_markdown.replace('"duration_ms":0', f'"duration_ms":{elapsed_ms}', 1)
+    raw_markdown = re.sub(
+        r"^duration_ms:\s*\d+\s*$",
+        f"duration_ms: {elapsed_ms}",
+        raw_markdown,
+        count=1,
+        flags=re.MULTILINE,
+    )
     return UseCaseDocument(
         metadata=intake,
         sections=sections,
