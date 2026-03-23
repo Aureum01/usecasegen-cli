@@ -10,7 +10,7 @@
   <p>
     <a href="https://pypi.org/project/ucgen"><img src="https://img.shields.io/pypi/v/ucgen?color=0a0a0a&labelColor=0a0a0a" alt="PyPI"></a>
     <a href="https://pypi.org/project/ucgen"><img src="https://img.shields.io/pypi/pyversions/ucgen?color=0a0a0a&labelColor=0a0a0a" alt="Python"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/github/license/Aureum01/usecasegen-cli?color=0a0a0a&labelColor=0a0a0a" alt="License"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0a0a0a?labelColor=0a0a0a" alt="License"></a>
   </p>
 
   <p>
