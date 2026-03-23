@@ -23,7 +23,7 @@
 {% endfor %}
 
 ## Information Requirements
-{% for req in sections.information_requirements %}- Step {{ req.step }}: {{ req.data_needed }} ({{ req.source }}, {{ req.format }})
+{% for req in sections.information_requirements %}- Step {{ req.step }}: {{ req.data_needed }}{% if req.source %} — {{ req.source }}{% endif %}{% if req.format %} ({{ req.format }}){% endif %}
 {% endfor %}
 
 ## Implied Entities
