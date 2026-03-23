@@ -3,12 +3,13 @@
 
 [defaults]
 provider = "ollama"
-model = "mistral"
+model = "mistral"        # or "qwen3:8b" — better JSON reliability
 output_dir = "./use-cases"
 template = "default"
 id_prefix = "UC"
 temperature = 0.3
-max_tokens = 2000
+max_tokens = 4000  # increase if sections are truncated,
+                   # decrease if your hardware is slow
 
 [providers]
 ollama_base_url = "http://localhost:11434"

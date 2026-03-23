@@ -34,18 +34,23 @@ Output ONLY valid JSON. No preamble. No explanation. No code fences.
 Rules:
 
     preconditions: 3-6 items. Verifiable states, noun phrases, not actions.
-    minimal_guarantee: What the system preserves or records even when the primary goal FAILS. This is an architectural contract, not a log entry.
-    Ask yourself: if this use case fails halfway through, what SPECIFIC data must exist so the system can recover, audit, or retry?
-    The minimal_guarantee must:
-    - Name the specific table or storage location
-    - List the specific fields preserved (IDs, timestamps, status)
-    - State the failure condition it protects against
-    - Be ONE sentence for THIS use case only — not multiple scenarios
-    Example structure (do not copy domain — adapt to actual use case):
-    "<entity> attempt written to <audit_table> with <id_field>, <key_field>, <timestamp_field>, and <reason_field> even if <specific_failure_condition>"
-    Do NOT include examples from other domains.
-    Do NOT write multiple sentences covering different failure scenarios.
-    Write exactly ONE sentence for the current use case only.
+    minimal_guarantee: ONE sentence only. No payment examples.
+    Structure: "[entity] attempt written to [table] with [field1], [field2], [timestamp] even if [failure]"
+    For this use case only. Do not write about payment, cards, or financial transactions unless the use case is about payment.
+    postconditions: REQUIRED. 3-5 items. Never leave empty.
+    Write what is verifiably true after success.
+    Example: "Appointment record exists with status=confirmed", "Provider calendar updated with new slot", "Confirmation email queued for delivery"
+    information_requirements: REQUIRED. One entry per data element needed in the normal course steps. Never leave empty.
+    Return information_requirements as a list of objects with exactly these keys:
+    step        — which step in the normal course needs this data
+    data_needed — name of the data item required
+    format      — expected format or source system (null if unknown)
+    Example:
+    [
+      {"step": "2", "data_needed": "Patient ID", "format": "UUID"},
+      {"step": "4", "data_needed": "Available slots", "format": "ISO 8601 datetime list"}
+    ]
+    Do NOT return {name, source} objects. Do NOT return plain strings.
     success_guarantee: What is verifiably true for EVERY stakeholder after successful completion. Address each stakeholder from intake.stakeholders. WEAK (never write this): "The goal is achieved" "System completes the action" "User gets what they wanted" STRONG (write this instead): "Patient: appointment_id and confirmation_code in hand, confirmation email queued. Clinic: slot marked unavailable in provider calendar. Insurance system: appointment record exists with patient_id and provider_id for future claim linkage." One sentence per stakeholder. Reference actual entity names and fields.
     normal_course: 5-9 steps. Present tense. No UI language. Never write: "clicks", "button", "dropdown", "navigates to", "form" Always write intent: "confirms", "selects", "submits", "reviews"
     alternative_courses: min 2. Include *a for session timeout or system failure that can happen at any step. Format: {"ref": "2a", "condition": "...", "response": "..."}

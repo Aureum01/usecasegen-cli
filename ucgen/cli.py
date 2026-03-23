@@ -27,6 +27,7 @@ from ucgen.exporter import to_json, to_yaml
 from ucgen.generator import generate as run_generate
 from ucgen.project_runner import get_project_status, load_project
 from ucgen.providers import ProviderFactory
+from ucgen.reporter import generate_report
 from ucgen.validator import validate_file
 
 logging.basicConfig(level=logging.INFO)
@@ -99,7 +100,12 @@ def _build_progress(include_mofn: bool = False) -> Progress:
     )
 
 
-def _run_with_stage_progress(idea: str, config: Config, provider_instance) -> object:
+def _run_with_stage_progress(
+    idea: str,
+    config: Config,
+    provider_instance,
+    debug: bool = False,
+) -> object:
     """Run generation with live stage progress and return document."""
     with _build_progress() as progress:
         tasks = [
@@ -120,6 +126,7 @@ def _run_with_stage_progress(idea: str, config: Config, provider_instance) -> ob
                 config,
                 provider_instance,
                 on_stage_complete=on_stage_complete,
+                debug=debug,
             )
         )
 
@@ -134,6 +141,12 @@ def generate(
     format: str = typer.Option("markdown"),
     stdin: bool = typer.Option(False, "--stdin"),
     append: Path | None = typer.Option(None),
+    debug: bool = typer.Option(False, "--debug"),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="After generating, open HTML report of all use cases",
+    ),
 ) -> None:
     """Generate a use case document from natural language."""
     input_idea = sys.stdin.read().strip() if stdin else idea
@@ -145,7 +158,7 @@ def generate(
         overrides["model"] = model
     config = Config(**overrides)
     provider_instance = ProviderFactory.create(config)
-    document = _run_with_stage_progress(input_idea, config, provider_instance)
+    document = _run_with_stage_progress(input_idea, config, provider_instance, debug=debug)
     slug = _slug_from_text(actor or document.metadata.actor, document.metadata.goal)
     output_path = output or (config.output_dir / f"{document.metadata.uc_id}-{slug}.md")
     rendered: str
@@ -161,6 +174,13 @@ def generate(
             config.hooks_on_generate,
             {"uc_id": document.metadata.uc_id, "file": str(written_path)},
         )
+    if report:
+        use_case_files = sorted(config.output_dir.glob("*.md"))
+        report_html = generate_report(use_case_files, "Use Case Report")
+        report_path = config.output_dir / "report.html"
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(report_html, encoding="utf-8")
+        console.print(f"Report written to {report_path}")
     console.print(
         Panel(
             f"Generated {document.metadata.uc_id} -> {written_path}\n"
@@ -391,3 +411,17 @@ def version() -> None:
         table.add_row(name, "yes" if available else "no")
     console.print(f"ucgen {__version__}")
     console.print(table)
+
+
+@app.command()
+def report(
+    output_dir: Path = typer.Option(Path("./use-cases"), "--dir", "-d"),
+    output_file: Path = typer.Option(Path("./use-cases/report.html"), "--output", "-o"),
+    title: str = typer.Option("Use Case Report", "--title"),
+) -> None:
+    """Generate a single HTML report from all use case .md files."""
+    use_case_files = sorted(output_dir.glob("*.md"))
+    report_html = generate_report(use_case_files, title)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(report_html, encoding="utf-8")
+    console.print(f"Report written to {output_file}")

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FrozenModel(BaseModel):
@@ -101,6 +102,72 @@ class SectionsResult(FrozenModel):
     nfr: list[NFREntry] | None = None
     state_machine: list[StateMachineState] | None = None
     open_issues: list[str] | None = None
+
+    @field_validator("minimal_guarantee", "success_guarantee", mode="before")
+    @classmethod
+    def coerce_guarantee_to_str(cls, v: object) -> str:
+        if isinstance(v, list):
+            return " ".join(str(i) for i in v)
+        if isinstance(v, dict):
+            return ". ".join(f"{k}: {val}" for k, val in v.items())
+        return str(v)
+
+    @field_validator("normal_course", mode="before")
+    @classmethod
+    def coerce_normal_course(cls, v: object) -> list:
+        if isinstance(v, list) and v and isinstance(v[0], str):
+            return [
+                {"step": i + 1, "actor": "System", "action": step, "system_response": ""}
+                for i, step in enumerate(v)
+            ]
+        return v
+
+    @field_validator("nfr", mode="before")
+    @classmethod
+    def coerce_nfr(cls, v: object) -> list | None:
+        if isinstance(v, list) and v and isinstance(v[0], str):
+            return [
+                {"type": item, "requirement": item, "threshold": None}
+                for item in v
+            ]
+        return v
+
+    @field_validator("postconditions", mode="before")
+    @classmethod
+    def coerce_postconditions(cls, v: object) -> list:
+        if isinstance(v, str):
+            return [v]
+        return v
+
+    @field_validator("information_requirements", mode="before")
+    @classmethod
+    def coerce_information_requirements(cls, v: Any) -> Any:
+        if not isinstance(v, list):
+            return v
+        coerced = []
+        for item in v:
+            if isinstance(item, dict):
+                # Already correct shape
+                if "step" in item or "data_needed" in item:
+                    coerced.append(item)
+                # Mistral returns {name, source} — remap it
+                elif "name" in item or "source" in item:
+                    coerced.append(
+                        {
+                            "step": item.get("name") or item.get("source") or "",
+                            "data_needed": item.get("name", ""),
+                            "format": item.get("source") or None,
+                        }
+                    )
+            elif isinstance(item, str):
+                coerced.append(
+                    {
+                        "step": item,
+                        "data_needed": item,
+                        "format": None,
+                    }
+                )
+        return coerced
 
 
 class EntityField(FrozenModel):

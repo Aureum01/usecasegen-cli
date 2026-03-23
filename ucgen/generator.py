@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -31,6 +32,13 @@ def _save_debug(output_dir: Path, filename: str, raw_output: str) -> None:
     debug_dir = output_dir / ".ucgen_debug"
     debug_dir.mkdir(parents=True, exist_ok=True)
     (debug_dir / filename).write_text(raw_output, encoding="utf-8")
+
+
+def _should_write_debug(debug: bool) -> bool:
+    """Return True when debug output should be persisted."""
+    if debug:
+        return True
+    return os.getenv("UCGEN_DEBUG") == "1"
 
 
 async def _call_with_retry(
@@ -70,6 +78,7 @@ async def _run_intake(
     uc_id: str,
     config: Config,
     provider: BaseProvider,
+    debug: bool = False,
 ) -> IntakeResult:
     system = load_prompt("system_base", config.custom_prompts_dir)
     user = load_prompt("stage1_intake", config.custom_prompts_dir).replace("{idea}", idea)
@@ -82,7 +91,8 @@ async def _run_intake(
         payload["raw_input"] = idea
         return IntakeResult(**payload)
     except Exception as exc:
-        _save_debug(config.output_dir, f"{uc_id}-intake.txt", raw)
+        if _should_write_debug(debug):
+            _save_debug(config.output_dir, f"{uc_id}-stage1-raw.json", raw)
         raise IntakeParseError(
             message="Failed to parse intake stage output.", stage="intake", raw_output=raw
         ) from exc
@@ -92,6 +102,7 @@ async def _run_sections(
     intake: IntakeResult,
     config: Config,
     provider: BaseProvider,
+    debug: bool = False,
 ) -> SectionsResult:
     system = load_prompt("system_base", config.custom_prompts_dir)
     user = load_prompt("stage2_sections", config.custom_prompts_dir).replace(
@@ -105,7 +116,8 @@ async def _run_sections(
         payload = extract_json(raw)
         return SectionsResult(**payload)
     except Exception as exc:
-        _save_debug(config.output_dir, f"{intake.uc_id}-sections.txt", raw)
+        if _should_write_debug(debug):
+            _save_debug(config.output_dir, f"{intake.uc_id}-stage2-raw.json", raw)
         raise SectionsParseError(
             message="Failed to parse sections stage output.", stage="sections", raw_output=raw
         ) from exc
@@ -116,6 +128,7 @@ async def _run_entities(
     sections: SectionsResult,
     config: Config,
     provider: BaseProvider,
+    debug: bool = False,
 ) -> EntitiesResult:
     system = load_prompt("system_base", config.custom_prompts_dir)
     summary = {
@@ -140,7 +153,8 @@ async def _run_entities(
             {"name": name.title().replace(" ", ""), "fields": [], "relationships": []}
             for name in intake.related_entities
         ]
-        _save_debug(config.output_dir, f"{intake.uc_id}-entities.txt", raw)
+        if _should_write_debug(debug):
+            _save_debug(config.output_dir, f"{intake.uc_id}-stage3-raw.json", raw)
         if not fallback_entities:
             fallback_entities = [
                 {"name": "Entity", "fields": [], "relationships": []},
@@ -158,6 +172,7 @@ async def generate(
     config: Config,
     provider: BaseProvider,
     on_stage_complete: Callable[[int], None] | None = None,
+    debug: bool = False,
 ) -> UseCaseDocument:
     """Run full sequential generation pipeline.
 
@@ -182,17 +197,18 @@ async def generate(
         )
     started = time.perf_counter()
     uc_id = next_id(config.output_dir, prefix=config.id_prefix)
-    intake = await _run_intake(idea, uc_id, config, provider)
+    intake = await _run_intake(idea, uc_id, config, provider, debug=debug)
     if on_stage_complete is not None:
         on_stage_complete(1)
-    sections = await _run_sections(intake, config, provider)
+    sections = await _run_sections(intake, config, provider, debug=debug)
     if on_stage_complete is not None:
         on_stage_complete(2)
-    entities = await _run_entities(intake, sections, config, provider)
+    entities = await _run_entities(intake, sections, config, provider, debug=debug)
     if on_stage_complete is not None:
         on_stage_complete(3)
-    raw_markdown = assemble(intake, sections, entities, config)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
+    raw_markdown = assemble(intake, sections, entities, config)
+    raw_markdown = raw_markdown.replace('"duration_ms":0', f'"duration_ms":{elapsed_ms}', 1)
     return UseCaseDocument(
         metadata=intake,
         sections=sections,

@@ -16,7 +16,15 @@ Note failures inline with what went wrong.
 ```bash
 ollama serve
 ollama pull mistral
+ollama pull qwen3:8b    # recommended — better JSON reliability
 ```
+
+Run tests with qwen3:8b first:
+python -m ucgen generate "patient books appointment" 
+(uses whatever is set in .ucgenrc.toml)
+
+To switch models mid-test:
+Edit .ucgenrc.toml model = "qwen3:8b"
 
 - [ ] `ollama serve` is running in a separate terminal
 - [ ] `mistral` model is pulled and available

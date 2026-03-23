@@ -23,7 +23,7 @@ output_dir = "./use-cases"
 template = "default"
 id_prefix = "UC"
 temperature = 0.3
-max_tokens = 2000
+max_tokens = 4000
 
 [providers]
 ollama_base_url = "http://localhost:11434"
@@ -49,7 +49,7 @@ class Config(FrozenModel):
     custom_base_url: str | None = None
     custom_prompts_dir: Path | None = None
     temperature: float = 0.3
-    max_tokens: int = 2000
+    max_tokens: int = 4000
     hooks_on_generate: str | None = None
     hooks_on_batch_complete: str | None = None
 

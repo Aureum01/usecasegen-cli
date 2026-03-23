@@ -30,9 +30,13 @@
 {% for entity in entities.entities %}- {{ entity.name }}
 {% endfor %}
 
-## NFR
-{% if sections.nfr %}{% for req in sections.nfr %}- {{ req.type }}: {{ req.requirement }}{% if req.threshold %} ({{ req.threshold }}){% endif %}
-{% endfor %}{% else %}- None
+{% if sections.nfr %}
+## Non-Functional Requirements
+
+| Type | Requirement | Threshold |
+| ---- | ----------- | --------- |
+{% for n in sections.nfr %}| {{ n.type }} | {{ n.requirement }} | {{ n.threshold or "—" }} |
+{% endfor %}
 {% endif %}
 
 ## Open Issues
