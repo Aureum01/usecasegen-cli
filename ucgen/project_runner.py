@@ -11,6 +11,7 @@ from pathlib import Path
 from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from ucgen.config import Config
+from ucgen.exporter import to_json
 from ucgen.generator import generate
 from ucgen.providers.base import BaseProvider
 from ucgen.schema import IntakeResult, ProjectDefinition, UseCaseDocument
@@ -222,6 +223,8 @@ async def run_project(
                 slug = _slug_from_goal(use_case.goal)
                 output_path = project_output_dir / f"{use_case.id}-{slug}.md"
                 output_path.write_text(document.raw_markdown, encoding="utf-8")
+                json_path = project_output_dir / f"{use_case.id}-{slug}.json"
+                json_path.write_text(to_json(document), encoding="utf-8")
                 if project.hooks and project.hooks.on_generate:
                     run_hook(
                         project.hooks.on_generate,

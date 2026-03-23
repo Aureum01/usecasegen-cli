@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ report_title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300,0,0;9..144,600,0,0;9..144,600,100,0&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b0e14; --surface:#111520; --surface2:#161c2b; --border:#1e2a3d; --accent:#3b82f6; --accent2:#06b6d4; --green:#10b981; --amber:#f59e0b; --red:#ef4444; --purple:#a78bfa; --text:#e2e8f0; --muted:#64748b; --label:#94a3b8; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:"DM Mono",monospace; }
+    .wrap { display:flex; }
+    .sidebar { width:220px; border-right:1px solid var(--border); background:var(--surface); position:sticky; top:0; height:100vh; padding:24px 16px; overflow:auto; }
+    .nav-title { color:var(--muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 10px; }
+    .sidebar a, .sidebar span { display:block; color:var(--label); text-decoration:none; font-size:12px; margin:8px 0; }
+    .sidebar a:hover { color:var(--accent2); }
+    .main { max-width:900px; padding:40px 48px; margin:0 auto; flex:1; }
+    .index-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:24px; }
+    .index-list a { color:var(--accent2); text-decoration:none; }
+    .uc-divider { position:relative; border-top:1px solid var(--border); margin:30px 0 22px; }
+    .uc-divider span { position:absolute; top:-10px; left:0; background:var(--bg); color:var(--accent); padding-right:10px; font-size:12px; }
+    .uc-block { padding-bottom:28px; }
+    .sticky-head { position:sticky; top:0; z-index:2; background:linear-gradient(var(--bg) 78%, transparent); padding:8px 0 16px; }
+    .uc-id { color:var(--accent); font-size:12px; }
+    h1 { margin:8px 0 12px; font:600 28px/1.2 "Fraunces",serif; }
+    .pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill { padding:5px 9px; border:1px solid var(--border); border-radius:999px; background:var(--surface2); color:var(--label); font-size:11px; }
+    .section-head { margin:24px 0 10px; display:flex; gap:10px; align-items:baseline; }
+    .section-head .num { color:var(--muted); font-size:12px; }
+    .section-head h2 { margin:0; font:600 20px/1.2 "Fraunces",serif; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .left-accent2 { border-left:4px solid var(--accent2); }
+    .left-amber { border-left:4px solid var(--amber); }
+    .left-green { border-left:4px solid var(--green); }
+    .left-red { border-left:4px solid var(--red); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .muted { color:var(--muted); }
+    .stake-name { color:var(--accent2); margin-bottom:6px; }
+    ul.clean { list-style:none; padding:0; margin:0; }
+    ul.clean li { color:var(--muted); border-bottom:1px dashed var(--border); padding:8px 0 8px 16px; position:relative; }
+    ul.clean li::before { content:""; width:8px; height:8px; border-radius:99px; background:var(--accent); position:absolute; left:0; top:14px; }
+    ul.green li::before { background:var(--green); }
+    .step-card { display:grid; grid-template-columns:56px 1fr; gap:10px; margin-bottom:10px; }
+    .step-no { border-radius:8px; text-align:center; padding:12px 6px; color:var(--accent); background:rgba(59,130,246,.16); }
+    .actor { color:var(--accent2); text-transform:uppercase; letter-spacing:.08em; font-size:11px; margin-bottom:6px; }
+    .sys-resp { margin-top:10px; border-left:3px solid var(--accent); background:#0f1420; color:var(--muted); padding:8px 10px; border-radius:6px; }
+    .ref { display:inline-block; border-radius:999px; padding:2px 7px; color:var(--amber); border:1px solid rgba(245,158,11,.45); background:rgba(245,158,11,.16); font-size:11px; margin-bottom:8px; }
+    .condition { color:var(--label); font-style:italic; margin-bottom:7px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border:1px solid var(--border); padding:9px 10px; text-align:left; vertical-align:top; font-size:12px; }
+    th { color:var(--label); background:var(--surface2); }
+    .step-badge { display:inline-flex; width:22px; height:22px; border-radius:999px; align-items:center; justify-content:center; color:var(--accent); background:rgba(59,130,246,.2); }
+    .badge { display:inline-block; border-radius:999px; padding:2px 7px; font-size:11px; border:1px solid transparent; margin-right:6px; margin-bottom:6px; }
+    .b-blue { color:var(--accent); border-color:rgba(59,130,246,.45); background:rgba(59,130,246,.16); }
+    .b-cyan { color:var(--accent2); border-color:rgba(6,182,212,.45); background:rgba(6,182,212,.16); }
+    .b-green { color:var(--green); border-color:rgba(16,185,129,.45); background:rgba(16,185,129,.16); }
+    .b-purple { color:var(--purple); border-color:rgba(167,139,250,.45); background:rgba(167,139,250,.16); }
+    .b-amber { color:var(--amber); border-color:rgba(245,158,11,.45); background:rgba(245,158,11,.16); }
+    .threshold { color:var(--green); font-family:"DM Mono",monospace; }
+    .sm-grid { display:flex; flex-wrap:wrap; gap:10px; }
+    .sm-card { min-width:180px; }
+    .state-name { color:var(--accent2); margin-bottom:8px; }
+    .entity-name { margin-bottom:10px; color:var(--accent2); font:600 19px/1.2 "Fraunces",serif; }
+    .issue-label { color:var(--red); font-size:11px; letter-spacing:.06em; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="sidebar">
+      <p class="nav-title">Sections</p>
+      {% if has_docs %}
+      {% set nav_uc = docs[0].uc_id %}
+      <a href="#{{ nav_uc }}-s01">01 Trigger</a>
+      <a href="#{{ nav_uc }}-s02">02 Stakeholders</a>
+      <a href="#{{ nav_uc }}-s03">03 Guarantees</a>
+      <a href="#{{ nav_uc }}-s04">04 Preconditions</a>
+      <a href="#{{ nav_uc }}-s05">05 Normal Course</a>
+      <a href="#{{ nav_uc }}-s06">06 Alternative Courses</a>
+      <a href="#{{ nav_uc }}-s07">07 Postconditions</a>
+      <a href="#{{ nav_uc }}-s08">08 Information Requirements</a>
+      <a href="#{{ nav_uc }}-s09">09 NFRs</a>
+      <a href="#{{ nav_uc }}-s10">10 State Machine</a>
+      <a href="#{{ nav_uc }}-s11">11 Entities</a>
+      <a href="#{{ nav_uc }}-s12">12 Open Issues</a>
+      {% endif %}
+    </aside>
+    <main class="main">
+      {% if mode == "portfolio" and has_docs %}
+      <section class="index-card" id="index">
+        <div class="nav-title">Portfolio Index</div>
+        <div class="index-list">
+          {% for doc in docs %}
+            <div><a href="#{{ doc.uc_id }}">{{ doc.uc_id }} — {{ doc.title }}</a></div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% for doc in docs %}
+      {% if mode == "portfolio" %}<div class="uc-divider"><span>{{ doc.uc_id }}</span></div>{% endif %}
+      <section class="uc-block" id="{{ doc.uc_id }}">
+        <header class="sticky-head">
+          <div class="uc-id">{{ doc.uc_id }}</div>
+          <h1>{{ doc.title }}</h1>
+          <div class="pills">
+            <span class="pill">domain: {{ doc.domain }}</span>
+            <span class="pill">goal_level: {{ doc.goal_level }}</span>
+            <span class="pill">actor: {{ doc.actor }}</span>
+            <span class="pill">system_boundary: {{ doc.system_boundary }}</span>
+            <span class="pill">frequency: {{ doc.frequency }}</span>
+          </div>
+        </header>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s01"><span class="num">01</span><h2>Trigger</h2></div>
+        <div class="card left-accent2">{{ doc.trigger }}</div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s02"><span class="num">02</span><h2>Stakeholders</h2></div>
+        <div class="grid-2">{% for s in doc.stakeholders %}<div class="card"><div class="stake-name">{{ s.name }}</div><div class="muted">{{ s.interest }}</div></div>{% endfor %}</div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s03"><span class="num">03</span><h2>Guarantees</h2></div>
+        <div class="grid-2">
+          <div class="card left-amber"><div class="muted">Minimal Guarantee</div><div>{{ doc.minimal_guarantee }}</div></div>
+          <div class="card left-green"><div class="muted">Success Guarantee</div><div>{{ doc.success_guarantee }}</div></div>
+        </div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s04"><span class="num">04</span><h2>Preconditions</h2></div>
+        <ul class="clean">{% for item in doc.preconditions %}<li>{{ item }}</li>{% endfor %}</ul>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s05"><span class="num">05</span><h2>Normal Course</h2></div>
+        {% for step in doc.normal_course %}
+        <div class="step-card"><div class="step-no">{{ step.step }}</div><div class="card"><div class="actor">{{ step.actor }}</div><div>{{ step.action }}</div><div class="sys-resp">↳ {{ step.system_response }}</div></div></div>
+        {% endfor %}
+
+        <div class="section-head" id="{{ doc.uc_id }}-s06"><span class="num">06</span><h2>Alternative Courses</h2></div>
+        {% for alt in doc.alternative_courses %}
+        <div class="card left-amber" style="margin-bottom:10px;"><span class="ref">{{ alt.ref }}</span><div class="condition">{{ alt.condition }}</div><div>{{ alt.response }}</div></div>
+        {% endfor %}
+
+        <div class="section-head" id="{{ doc.uc_id }}-s07"><span class="num">07</span><h2>Postconditions</h2></div>
+        <ul class="clean green">{% for item in doc.postconditions %}<li>{{ item }}</li>{% endfor %}</ul>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s08"><span class="num">08</span><h2>Information Requirements</h2></div>
+        <div class="card">
+          <table><thead><tr><th>Step</th><th>Data Needed</th><th>Format</th></tr></thead><tbody>
+            {% for row in doc.information_requirements %}
+            <tr><td><span class="step-badge">{{ row.step }}</span></td><td>{{ row.data_needed }}</td><td>{{ row.format or row.source or "—" }}</td></tr>
+            {% endfor %}
+          </tbody></table>
+        </div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s09"><span class="num">09</span><h2>NFRs</h2></div>
+        <div class="card">
+          <table><thead><tr><th>Type</th><th>Requirement</th><th>Threshold</th></tr></thead><tbody>
+            {% for n in doc.nfr %}
+            <tr><td><span class="badge {{ n.badge_class }}">{{ n.type }}</span></td><td>{{ n.requirement }}</td><td class="threshold">{{ n.threshold or "—" }}</td></tr>
+            {% endfor %}
+          </tbody></table>
+        </div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s10"><span class="num">10</span><h2>State Machine</h2></div>
+        <div class="sm-grid">
+          {% if doc.state_machine %}
+            {% for state in doc.state_machine %}
+            <div class="card sm-card"><div class="state-name">{{ state.state }}</div><div>{% for to in state.transitions %}<span class="badge b-blue">{{ to }}</span>{% endfor %}</div></div>
+            {% endfor %}
+          {% else %}
+            <div class="card muted">No explicit lifecycle states.</div>
+          {% endif %}
+        </div>
+
+        <div class="section-head" id="{{ doc.uc_id }}-s11"><span class="num">11</span><h2>Entities</h2></div>
+        {% for entity in doc.entities %}
+        <div class="card" style="margin-bottom:12px;">
+          <div class="entity-name">{{ entity.name }}</div>
+          <table><thead><tr><th>Field</th><th>Type</th><th>Constraints</th></tr></thead><tbody>
+            {% for field in entity.fields %}
+            <tr><td>{{ field.name }}</td><td>{{ field.type }}</td><td>{% for b in field.badges %}<span class="badge {{ b.class }}">{{ b.label }}</span>{% endfor %}</td></tr>
+            {% endfor %}
+          </tbody></table>
+          <div style="margin-top:10px;">{% for rel in entity.relationships %}<span class="badge b-cyan">{{ rel }}</span>{% endfor %}</div>
+        </div>
+        {% endfor %}
+
+        <div class="section-head" id="{{ doc.uc_id }}-s12"><span class="num">12</span><h2>Open Issues</h2></div>
+        {% for issue in doc.open_issues %}
+        <div class="card left-red" style="margin-bottom:10px;"><div class="issue-label">ISSUE {{ "%02d"|format(loop.index) }}</div><div>{{ issue }}</div></div>
+        {% endfor %}
+      </section>
+      {% endfor %}
+    </main>
+  </div>
+  <script>
+    // Intentionally inline for self-contained report.
+  </script>
+</body>
+</html>

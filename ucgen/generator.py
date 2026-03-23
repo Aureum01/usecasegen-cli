@@ -106,10 +106,13 @@ async def _run_sections(
     debug: bool = False,
 ) -> SectionsResult:
     system = load_prompt("system_base", config.custom_prompts_dir)
-    user = load_prompt("stage2_sections", config.custom_prompts_dir).replace(
-        "{intake_json}",
-        json.dumps(intake.model_dump(), ensure_ascii=True),
-    )
+    intake_json = json.dumps(intake.model_dump(), ensure_ascii=True)
+    user = load_prompt("stage2_sections", config.custom_prompts_dir)
+    # Support both whole-object and dotted intake placeholders.
+    user = user.replace("{intake_json}", intake_json)
+    user = user.replace("{intake_json.domain}", str(intake.domain))
+    user = user.replace("{intake_json.actor}", str(intake.actor))
+    user = user.replace("{intake_json.goal}", str(intake.goal))
     raw = await _call_with_retry(
         provider, system, user, "sections", config.temperature, config.max_tokens
     )

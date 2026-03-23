@@ -8,6 +8,7 @@ import logging
 import shutil
 import subprocess
 import sys
+import webbrowser
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from rich.table import Table
 
 from ucgen import __version__
 from ucgen.config import Config, load
-from ucgen.exporter import to_json, to_yaml
+from ucgen.exporter import export_report, load_documents_from_json, to_json
 from ucgen.generator import generate as run_generate
 from ucgen.project_runner import (
     get_project_status,
@@ -35,7 +36,6 @@ from ucgen.project_runner import (
     run_project,
 )
 from ucgen.providers import ProviderFactory
-from ucgen.reporter import generate_report
 from ucgen.schema import UseCaseDocument
 from ucgen.validator import validate_file
 
@@ -264,30 +264,24 @@ def generate(
     provider_instance = ProviderFactory.create(config)
     document = _run_with_stage_progress(input_idea, config, provider_instance, debug=debug)
     slug = _slug_from_text(actor or document.metadata.actor, document.metadata.goal)
-    output_path = output or (config.output_dir / f"{document.metadata.uc_id}-{slug}.md")
-    rendered: str
-    if format == "json":
-        rendered = to_json(document)
-    elif format == "yaml":
-        rendered = to_yaml(document)
-    else:
-        rendered = document.raw_markdown
-    written_path = _write_document(rendered, output_path, append_path=append)
+    uc_folder = config.output_dir / "standalone" / f"{document.metadata.uc_id}-{slug}"
+    uc_folder.mkdir(parents=True, exist_ok=True)
+    md_path = uc_folder / f"{document.metadata.uc_id}-{slug}.md"
+    json_path = uc_folder / f"{document.metadata.uc_id}-{slug}.json"
+    written_path = _write_document(document.raw_markdown, md_path, append_path=append)
+    json_path.write_text(to_json(document), encoding="utf-8")
     if config.hooks_on_generate:
         _run_hook(
             config.hooks_on_generate,
             {"uc_id": document.metadata.uc_id, "file": str(written_path)},
         )
     if report:
-        use_case_files = sorted(config.output_dir.glob("*.md"))
-        report_html = generate_report(use_case_files, "Use Case Report")
-        report_path = config.output_dir / "report.html"
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(report_html, encoding="utf-8")
+        report_path = uc_folder / "report.html"
+        export_report([document], report_path, mode="single")
         console.print(f"Report written to {report_path}")
     console.print(
         Panel(
-            f"Generated {document.metadata.uc_id} -> {written_path}\n"
+            f"Generated {document.metadata.uc_id} -> {uc_folder}\n"
             f"Provider: {document.provider}\n"
             f"Model: {document.model}\n"
             f"Duration: {document.duration_ms}ms",
@@ -426,6 +420,7 @@ def batch(
     output: Path | None = typer.Option(None, "-o"),
     provider: str | None = typer.Option(None),
     model: str | None = typer.Option(None),
+    report: bool = typer.Option(False, "--report"),
 ) -> None:
     """Generate use cases from txt or yaml input files."""
     ideas: list[str] = []
@@ -455,6 +450,10 @@ def batch(
         overrides["model"] = model
     config = Config(**overrides)
     provider_instance = ProviderFactory.create(config)
+    batch_ts = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    batch_folder = config.output_dir / "batch" / batch_ts
+    batch_folder.mkdir(parents=True, exist_ok=True)
+    console.print(f"Batch output -> {batch_folder}/")
     successes = 0
     failures = 0
     with _build_progress(include_mofn=True) as progress:
@@ -468,14 +467,21 @@ def batch(
             try:
                 document = asyncio.run(run_generate(item_idea, config, provider_instance))
                 slug = _slug_from_text(document.metadata.actor, document.metadata.goal)
-                output_path = output or (config.output_dir / f"{document.metadata.uc_id}-{slug}.md")
-                _write_document(document.raw_markdown, output_path)
+                md_path = output or (batch_folder / f"{document.metadata.uc_id}-{slug}.md")
+                json_path = batch_folder / f"{document.metadata.uc_id}-{slug}.json"
+                _write_document(document.raw_markdown, md_path)
+                json_path.write_text(to_json(document), encoding="utf-8")
                 successes += 1
             except Exception as exc:
                 logger.exception("Batch item failed: %s", exc)
                 failures += 1
             finally:
                 progress.advance(task)
+    if report:
+        report_path = batch_folder / "report.html"
+        batch_docs = load_documents_from_json(batch_folder)
+        export_report(batch_docs, report_path, mode="portfolio")
+        console.print(f"Report written to {report_path}")
     console.print(Panel(f"Succeeded: {successes}\nFailed: {failures}", title="batch"))
 
 
@@ -770,13 +776,28 @@ def version() -> None:
 
 @app.command()
 def report(
-    output_dir: Path = typer.Option(Path("./use-cases"), "--dir", "-d"),
-    output_file: Path = typer.Option(Path("./use-cases/report.html"), "--output", "-o"),
-    title: str = typer.Option("Use Case Report", "--title"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output HTML path (default: ./use-cases/report.html)",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open generated report in default browser",
+    ),
 ) -> None:
-    """Generate a single HTML report from all use case .md files."""
-    use_case_files = sorted(output_dir.glob("*.md"))
-    report_html = generate_report(use_case_files, title)
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    output_file.write_text(report_html, encoding="utf-8")
-    console.print(f"Report written to {output_file}")
+    """Generate a single HTML report from all use case JSON files."""
+    config = load()
+    resolved_output = output or (config.output_dir / "report.html")
+    with _build_progress() as progress:
+        task = progress.add_task("Loading use case JSON files...", total=2)
+        docs = load_documents_from_json(config.output_dir)
+        progress.advance(task)
+        progress.update(task, description="Rendering HTML report...")
+        export_report(docs, resolved_output, mode="portfolio")
+        progress.advance(task)
+    console.print(f"Report written to {resolved_output}")
+    if open_browser:
+        webbrowser.open(resolved_output.resolve().as_uri())
