@@ -12,13 +12,21 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 from ucgen import __version__
 from ucgen.config import Config, load
 from ucgen.exporter import to_json, to_yaml
 from ucgen.generator import generate as run_generate
-from ucgen.project_runner import get_project_status, load_project, run_project
+from ucgen.project_runner import get_project_status, load_project
 from ucgen.providers import ProviderFactory
 from ucgen.validator import validate_file
 
@@ -63,6 +71,37 @@ def _run_hook(command: str, context: dict[str, str]) -> None:
         logger.warning("Hook failed command=%s code=%d", resolved, completed.returncode)
 
 
+def _run_with_stage_progress(idea: str, config: Config, provider_instance) -> object:
+    """Run generation with live stage progress and return document."""
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(bar_width=30),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        tasks = [
+            progress.add_task("Stage 1/3  Analysing idea...", total=1, start=False),
+            progress.add_task("Stage 2/3  Writing use case...", total=1, start=False),
+            progress.add_task("Stage 3/3  Extracting entities...", total=1, start=False),
+        ]
+        progress.start_task(tasks[0])
+
+        def on_stage_complete(stage: int) -> None:
+            progress.advance(tasks[stage - 1])
+            if stage < len(tasks):
+                progress.start_task(tasks[stage])
+
+        return asyncio.run(
+            run_generate(
+                idea,
+                config,
+                provider_instance,
+                on_stage_complete=on_stage_complete,
+            )
+        )
+
+
 @app.command()
 def generate(
     idea: str = typer.Argument(...),
@@ -84,7 +123,7 @@ def generate(
         overrides["model"] = model
     config = Config(**overrides)
     provider_instance = ProviderFactory.create(config)
-    document = asyncio.run(run_generate(input_idea, config, provider_instance))
+    document = _run_with_stage_progress(input_idea, config, provider_instance)
     slug = _slug_from_text(actor or document.metadata.actor, document.metadata.goal)
     output_path = output or (config.output_dir / f"{document.metadata.uc_id}-{slug}.md")
     rendered: str
@@ -120,14 +159,60 @@ def run(
     """Read ucgen.yaml and generate defined use cases."""
     project = load_project(file)
     config = load()
+    selected_use_cases = []
+    for use_case in project.use_cases:
+        if use_case.status != "pending":
+            continue
+        if id and use_case.id != id:
+            continue
+        if tag and tag not in use_case.tags:
+            continue
+        selected_use_cases.append(use_case)
     provider = ProviderFactory.create(config)
-    results = asyncio.run(run_project(project, config, provider, filter_id=id, filter_tag=tag))
+    generated_count = 0
+    failed_count = 0
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(bar_width=30),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "Generating 0 of 0",
+            total=len(selected_use_cases),
+        )
+        for index, use_case in enumerate(selected_use_cases, start=1):
+            progress.update(
+                task,
+                description=(
+                    f"Generating {index} of {len(selected_use_cases)}: "
+                    f"{use_case.id} {use_case.title}"
+                ),
+            )
+            try:
+                document = asyncio.run(run_generate(use_case.goal, config, provider))
+                slug = _slug_from_text(use_case.actor, use_case.goal)
+                output_path = config.output_dir / f"{document.metadata.uc_id}-{slug}.md"
+                _write_document(document.raw_markdown, output_path)
+                generated_count += 1
+            except Exception as exc:
+                logger.exception("Project use case failed id=%s error=%s", use_case.id, exc)
+                failed_count += 1
+            finally:
+                progress.advance(task)
     if config.hooks_on_batch_complete:
         _run_hook(
             config.hooks_on_batch_complete,
-            {"count": str(len(results)), "project": str(file)},
+            {"count": str(generated_count), "project": str(file)},
         )
-    console.print(Panel(f"Generated {len(results)} use cases.", title="run complete"))
+    console.print(
+        Panel(
+            f"Generated {generated_count} use cases.\nFailed: {failed_count}",
+            title="run complete",
+        )
+    )
 
 
 @app.command()
@@ -175,15 +260,42 @@ def batch(
         ideas = [item.get("title", "") for item in data if isinstance(item, dict)]
     else:
         raise typer.BadParameter("Input must be .txt or .yaml/.yml")
+    config = load()
+    overrides = config.model_dump()
+    if provider:
+        overrides["provider"] = provider
+    if model:
+        overrides["model"] = model
+    config = Config(**overrides)
+    provider_instance = ProviderFactory.create(config)
     successes = 0
     failures = 0
-    for idea in ideas:
-        try:
-            generate(idea=idea, output=output, provider=provider, model=model)
-            successes += 1
-        except Exception as exc:
-            logger.exception("Batch item failed: %s", exc)
-            failures += 1
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        BarColumn(bar_width=30),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Generating 0 of 0", total=len(ideas))
+        for index, item_idea in enumerate(ideas, start=1):
+            idea_slug = _slug_from_text("", item_idea)
+            progress.update(
+                task,
+                description=f"Generating {index} of {len(ideas)}: {idea_slug}",
+            )
+            try:
+                document = asyncio.run(run_generate(item_idea, config, provider_instance))
+                slug = _slug_from_text(document.metadata.actor, document.metadata.goal)
+                output_path = output or (config.output_dir / f"{document.metadata.uc_id}-{slug}.md")
+                _write_document(document.raw_markdown, output_path)
+                successes += 1
+            except Exception as exc:
+                logger.exception("Batch item failed: %s", exc)
+                failures += 1
+            finally:
+                progress.advance(task)
     console.print(Panel(f"Succeeded: {successes}\nFailed: {failures}", title="batch"))
 
 

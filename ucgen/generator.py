@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -152,7 +153,12 @@ async def _run_entities(
         return EntitiesResult.model_validate({"entities": fallback_entities})
 
 
-async def generate(idea: str, config: Config, provider: BaseProvider) -> UseCaseDocument:
+async def generate(
+    idea: str,
+    config: Config,
+    provider: BaseProvider,
+    on_stage_complete: Callable[[int], None] | None = None,
+) -> UseCaseDocument:
     """Run full sequential generation pipeline.
 
     Args:
@@ -177,8 +183,14 @@ async def generate(idea: str, config: Config, provider: BaseProvider) -> UseCase
     started = time.perf_counter()
     uc_id = next_id(config.output_dir, prefix=config.id_prefix)
     intake = await _run_intake(idea, uc_id, config, provider)
+    if on_stage_complete is not None:
+        on_stage_complete(1)
     sections = await _run_sections(intake, config, provider)
+    if on_stage_complete is not None:
+        on_stage_complete(2)
     entities = await _run_entities(intake, sections, config, provider)
+    if on_stage_complete is not None:
+        on_stage_complete(3)
     raw_markdown = assemble(intake, sections, entities, config)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     return UseCaseDocument(
