@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+*.pyc
 *.egg-info/
 .eggs/
 dist/
@@ -11,3 +12,7 @@ venv/
 .mypy_cache/
 .coverage
 htmlcov/
+.ucgen_debug/
+.ucgen_counter
+use-cases/
+.ucgenrc.toml

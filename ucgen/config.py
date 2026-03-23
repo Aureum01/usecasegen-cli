@@ -13,6 +13,28 @@ from ucgen.schema import FrozenModel
 
 logger = logging.getLogger(__name__)
 
+_EXAMPLE_CONFIG = """# ucgen configuration example
+# Copy this file to .ucgenrc.toml and customize values.
+
+[defaults]
+provider = "ollama"
+model = "mistral"
+output_dir = "./use-cases"
+template = "default"
+id_prefix = "UC"
+temperature = 0.3
+max_tokens = 2000
+
+[providers]
+ollama_base_url = "http://localhost:11434"
+custom_base_url = ""
+custom_prompts_dir = ""
+
+[hooks]
+on_generate = ""
+on_batch_complete = ""
+"""
+
 
 class Config(FrozenModel):
     """Runtime configuration for ucgen."""
