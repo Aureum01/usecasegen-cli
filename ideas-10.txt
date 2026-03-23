@@ -1,0 +1,10 @@
+customer pays for order at checkout using saved card
+warehouse picker receives batch orders on handheld device and scans items
+AI agent monitors competitor websites every 6 hours and alerts sales team via Slack when price drops exceed 10 percent
+Danish farmer submits EU crop rotation subsidy claim with field maps and crop types
+startup founder upgrades team from free plan to Pro and system processes prorated Stripe payment
+property buyer makes offer on listing and system tracks counter-offers with version history
+patient with chronic condition books follow-up with specialist after insurance verification
+driver picks up parcel from warehouse and marks items as collected on mobile device
+user invites new team member to workspace and system sends onboarding email with role permissions
+system sends automated low stock alert to procurement team when inventory drops below threshold
