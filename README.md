@@ -5,7 +5,7 @@ CLI tool that generates structured Cockburn-style use case documents from natura
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB)
 ![License](https://img.shields.io/badge/license-MIT-0a0a0a?labelColor=0a0a0a)
 ![Version](https://img.shields.io/badge/version-0.1.0-2563eb)
-![PyPI](https://img.shields.io/badge/PyPI-coming%20soon-6b7280)
+![PyPI](https://img.shields.io/pypi/v/ucgen)
 
 ## What it does
 
