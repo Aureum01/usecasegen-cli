@@ -55,5 +55,8 @@ Rules:
     normal_course: 5-9 steps. Present tense. No UI language. Never write: "clicks", "button", "dropdown", "navigates to", "form" Always write intent: "confirms", "selects", "submits", "reviews"
     alternative_courses: min 2. Include *a for session timeout or system failure that can happen at any step. Format: {"ref": "2a", "condition": "...", "response": "..."}
     nfr: derive from domain and scale_hints. Payment → consistency NFR always. Real-time data → latency NFR always. High-frequency writes → throughput NFR always. Health/finance data → compliance NFR always.
-    state_machine: only populate if the primary entity moves through named states in this use case. Example: Trip moves through requested → matched → active → completed. If no clear lifecycle, set to null.
+    state_machine: MUST be null or a list of objects with keys {state, transitions}.
+    WRONG: "Booking moves through attempted → confirmed → completed"
+    RIGHT: [{"state":"attempted","transitions":["confirmed"]},{"state":"confirmed","transitions":["completed"]},{"state":"completed","transitions":[]}]
+    If no clear lifecycle, set to null.
     open_issues: genuine questions a developer must answer before implementation. Not generic. Examples: "What is the maximum advance booking window in days?" "Can a patient book on behalf of another patient?" "What happens to prepaid appointments if the provider cancels?"

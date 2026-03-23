@@ -44,18 +44,23 @@ class OllamaProvider(BaseProvider):
         max_tokens: int = 2000,
     ) -> GenerationResult:
         """Generate model output from Ollama chat endpoint."""
+        import re
+
         started = time.perf_counter()
         payload = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "options": {"temperature": temperature, "num_predict": max_tokens},
+            "think": False,
             "stream": False,
         }
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(f"{self.base_url}/api/chat", json=payload)
             response.raise_for_status()
             data = response.json()
         content = data["message"]["content"]
+        # Strip <think>...</think> blocks emitted by reasoning models (qwen3, deepseek-r1)
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.debug("Ollama response received in %d ms", elapsed_ms)
         return GenerationResult(

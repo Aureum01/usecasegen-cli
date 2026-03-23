@@ -70,8 +70,8 @@ class InfoRequirement(FrozenModel):
 
     step: int
     data_needed: str
-    source: str
-    format: str
+    source: str | None = None
+    format: str | None = None
 
 
 class NFREntry(FrozenModel):
@@ -114,17 +114,43 @@ class SectionsResult(FrozenModel):
 
     @field_validator("normal_course", mode="before")
     @classmethod
-    def coerce_normal_course(cls, v: object) -> list:
-        if isinstance(v, list) and v and isinstance(v[0], str):
-            return [
-                {"step": i + 1, "actor": "System", "action": step, "system_response": ""}
-                for i, step in enumerate(v)
-            ]
-        return v
+    def coerce_normal_course(cls, v: object) -> Any:
+        if not isinstance(v, list):
+            return v
+        coerced = []
+        for i, item in enumerate(v):
+            if isinstance(item, str):
+                coerced.append(
+                    {
+                        "step": i + 1,
+                        "actor": "System",
+                        "action": item,
+                        "system_response": "",
+                    }
+                )
+            elif isinstance(item, dict):
+                # Fix typo key "system, response" emitted by qwen3
+                system_response = (
+                    item.get("system_response")
+                    or item.get("system, response")
+                    or item.get("system response")
+                    or ""
+                )
+                coerced.append(
+                    {
+                        "step": item.get("step", i + 1),
+                        "actor": item.get("actor", "System"),
+                        "action": item.get("action", ""),
+                        "system_response": system_response,
+                    }
+                )
+            else:
+                coerced.append(item)
+        return coerced
 
     @field_validator("nfr", mode="before")
     @classmethod
-    def coerce_nfr(cls, v: object) -> list | None:
+    def coerce_nfr(cls, v: object) -> Any:
         if isinstance(v, list) and v and isinstance(v[0], str):
             return [
                 {"type": item, "requirement": item, "threshold": None}
@@ -134,7 +160,7 @@ class SectionsResult(FrozenModel):
 
     @field_validator("postconditions", mode="before")
     @classmethod
-    def coerce_postconditions(cls, v: object) -> list:
+    def coerce_postconditions(cls, v: object) -> Any:
         if isinstance(v, str):
             return [v]
         return v
@@ -147,27 +173,49 @@ class SectionsResult(FrozenModel):
         coerced = []
         for item in v:
             if isinstance(item, dict):
-                # Already correct shape
-                if "step" in item or "data_needed" in item:
-                    coerced.append(item)
-                # Mistral returns {name, source} — remap it
-                elif "name" in item or "source" in item:
+                if "name" in item and "step" not in item and "data_needed" not in item:
+                    # Mistral {name, source} shape — remap
                     coerced.append(
                         {
-                            "step": item.get("name") or item.get("source") or "",
+                            "step": 0,
                             "data_needed": item.get("name", ""),
-                            "format": item.get("source") or None,
+                            "source": item.get("source") or None,
+                            "format": None,
+                        }
+                    )
+                else:
+                    # qwen3 / correct shape — normalise and fill defaults
+                    raw_step = item.get("step", 0)
+                    coerced.append(
+                        {
+                            "step": int(raw_step) if str(raw_step).isdigit() else 0,
+                            "data_needed": item.get("data_needed", ""),
+                            "source": item.get("source") or None,
+                            "format": item.get("format") or None,
                         }
                     )
             elif isinstance(item, str):
                 coerced.append(
                     {
-                        "step": item,
+                        "step": 0,
                         "data_needed": item,
+                        "source": None,
                         "format": None,
                     }
                 )
         return coerced
+
+    @field_validator("state_machine", mode="before")
+    @classmethod
+    def coerce_state_machine(cls, v: object) -> Any:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            # Model returned a plain description string — discard it, not parseable as states
+            return None
+        if isinstance(v, list):
+            return v
+        return None
 
 
 class EntityField(FrozenModel):
