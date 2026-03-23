@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -41,9 +40,12 @@ app = typer.Typer(
 
 
 def _slug_from_text(actor: str, goal: str) -> str:
-    words = re.findall(r"[a-z0-9]+", f"{actor} {goal}".lower())
-    slug = "-".join(words[:6])[:40].strip("-")
-    return slug or "use-case"
+    combined = goal.lower()
+    actor_lower = actor.lower()
+    if combined.startswith(actor_lower):
+        combined = combined[len(actor_lower) :].strip()
+    words = [word for word in combined.split() if word.isalnum()][:5]
+    return "-".join(words)[:40]
 
 
 def _write_output(content: str, output_path: Path, append: bool = False) -> None:
