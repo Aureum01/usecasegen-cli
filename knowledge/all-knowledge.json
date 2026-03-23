@@ -1,0 +1,131 @@
+{
+  "file": "knowledge/all-knowledge.json",
+  "purpose": "All knowledge dictionaries: Python standards, CLI stack, DB rules, use-case theory, real-world patterns",
+
+  "active_for_this_project": ["python", "python-cli", "db-rules", "use-case-theory", "real-world-patterns"],
+
+  "python": {
+    "version": "3.11+",
+    "type_hints": {
+      "rule": "Required on every function signature",
+      "union": "X | Y not Union[X, Y]",
+      "optional": "X | None not Optional[X]",
+      "collections": "list[str] dict[str, int] not List Dict from typing"
+    },
+    "data_structures": {
+      "structured": "Pydantic or dataclass — never plain dict between functions",
+      "immutable": "dataclass(frozen=True) or Pydantic ConfigDict(frozen=True)",
+      "enums": "enum.Enum or enum.StrEnum — never string literals for categoricals"
+    },
+    "async": {
+      "entry": "asyncio.run() called once in cli.py only",
+      "http": "httpx.AsyncClient always — never requests in async code",
+      "sync_in_async": "asyncio.to_thread() — never run_in_executor directly",
+      "gather": "asyncio.gather() for truly independent tasks only — never sequential pipelines"
+    },
+    "file_ops": "Always pathlib.Path",
+    "logging": "logging module. Never print(). Lazy: logger.debug('%s', val) not f-strings.",
+    "package_manager": "uv"
+  },
+
+  "python_cli": {
+    "framework": "Typer[all]",
+    "output": "Rich — Console, Panel, Table, Progress",
+    "config": "TOML via tomllib stdlib. .{toolname}rc.toml convention.",
+    "project_discovery": "YAML via PyYAML optional dep. ucgen.yaml convention.",
+    "db_for_local_state": "SQLite stdlib sqlite3 or aiosqlite. No ORM for simple state.",
+    "distribution": "pyproject.toml with hatchling. [project.scripts] entry point.",
+    "testing": "typer.testing.CliRunner for CLI tests. pytest-asyncio asyncio_mode='auto'."
+  },
+
+  "db_rules": {
+    "selection_table": [
+      {"condition": "Structured relational data with foreign keys and joins", "recommendation": "PostgreSQL", "migration": "Alembic", "orm": "SQLAlchemy async"},
+      {"condition": "Local CLI or desktop app state, single user, simple schema", "recommendation": "SQLite", "access": "stdlib sqlite3 or aiosqlite"},
+      {"condition": "Document-heavy schema with variable structure, no complex joins", "recommendation": "MongoDB", "client": "Motor async"},
+      {"condition": "Caching, TTL, key-value, session storage", "recommendation": "Redis", "client": "redis-py async"},
+      {"condition": "Graph relationships are primary query pattern, traversals", "recommendation": "Neo4j"},
+      {"condition": "Time-series, append-only, sensor data, metrics", "recommendation": "TimescaleDB or InfluxDB"},
+      {"condition": "Full-text search is primary access pattern", "recommendation": "Elasticsearch or PostgreSQL pg_tsvector"}
+    ],
+    "pk_conventions": {
+      "default": "UUID v4, application-generated, never db-generated",
+      "column_name": "Always 'id' — never 'uuid' or '{table}_id' for the PK itself",
+      "when_integer_ok": "Internal lookup tables, enum-like tables only"
+    },
+    "general_rules": [
+      "created_at and updated_at on every table",
+      "Index every foreign key column",
+      "Never store computed derivable values",
+      "Soft deletes with deleted_at nullable — never hard delete user-generated content"
+    ]
+  },
+
+  "use_case_theory": {
+    "source": "Cockburn (2001) Writing Effective Use Cases + IEEE 29148:2011",
+
+    "goal_levels": {
+      "summary": "Multiple sessions, multiple actors. e.g. Manage Customer Account. Use for scoping only.",
+      "user_goal": "Single session, single actor achieves a goal. DEFAULT level for ucgen.",
+      "subfunction": "Single step within a user_goal. Only extract if that step becomes too complex."
+    },
+
+    "stakeholder_rule": "Always identify: primary actor (initiates), supporting actors (called), offstage stakeholders (affected but not present)",
+
+    "minimal_guarantee": {
+      "definition": "What system promises even when primary goal fails",
+      "writing_rule": "Think: what must be logged, recorded, or preserved regardless of outcome?",
+      "examples": {
+        "BookAppointment": "Attempt logged with timestamp and patient ID even if slot was taken",
+        "RequestRide": "Payment intent captured even if no driver found",
+        "StreamSong": "Play event recorded for royalties even if stream fails after 30s"
+      }
+    },
+
+    "success_guarantee": "Addresses each stakeholder's interest. Different from postconditions which describe system state.",
+
+    "scope_rules": {
+      "keep_gui_out": "Never describe interface elements. Write intent, not interaction.",
+      "wrong": "User clicks the Submit button",
+      "right": "User confirms appointment details",
+      "step_count": "3-9 steps in main success scenario. >9 means extract a sub use case."
+    },
+
+    "extension_format": "{step_number}{letter}: {condition} — {response}",
+    "extension_example": "2a: No available slots — System offers next available date and waitlist option",
+    "asterisk_rule": "*a: covers failures that can occur at any step e.g. session timeout, system down"
+  },
+
+  "real_world_patterns": {
+    "entity_extraction": {
+      "noun_rule": "Extract every noun with identity and state — not just domain objects",
+      "state_machine_signal": "If normal course mentions status changes, primary entity has a state machine",
+      "uber": "Trip states: requested|matched|active|completed|cancelled",
+      "spotify": "Stream states: buffering|playing|paused|completed|error"
+    },
+
+    "scale_inference": [
+      {"trigger": "Real-time location/position updates", "inference": "High write frequency — Cassandra or Redis for location", "example": "Uber: 500K writes/sec from driver location updates"},
+      {"trigger": "Search over large catalog", "inference": "Elasticsearch or pg_tsvector", "example": "Spotify: 100M songs need fuzzy search"},
+      {"trigger": "Matching two parties in real time", "inference": "Strong consistency + optimistic locking", "example": "Uber: driver must never be double-assigned"},
+      {"trigger": "Streaming binary content", "inference": "Blob storage + CDN — never serve from app server", "example": "Spotify: audio via S3/CDN not API server"},
+      {"trigger": "Payment processing", "inference": "Third-party processor (Stripe/PayPal) — never build internally", "pattern": "Webhook confirmation, never store card data"}
+    ],
+
+    "service_boundary_patterns": [
+      {"use_case_type": "Authentication, session", "service": "Identity Service"},
+      {"use_case_type": "Real-time matching or assignment", "service": "Matching Service"},
+      {"use_case_type": "Content streaming", "service": "Content Delivery Service"},
+      {"use_case_type": "Payment", "service": "Payment Service"},
+      {"use_case_type": "Search and discovery", "service": "Search Service"},
+      {"use_case_type": "Notifications", "service": "Notification Service"}
+    ],
+
+    "anti_patterns": [
+      {"anti": "Single database for all use cases", "lesson": "Uber split Trip, Location, Payment across services. Monolithic DB becomes bottleneck."},
+      {"anti": "Synchronous calls on critical path", "lesson": "Spotify uses Kafka so analytics failure doesn't block stream start."},
+      {"anti": "Building payment internally", "lesson": "PCI compliance alone justifies Stripe. Never raw card data."},
+      {"anti": "Scale from assumption not use case", "lesson": "Uber's 500K writes/sec is derivable from 'Driver Updates Location' frequency × active drivers."}
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "file": "templates/index.json",
+  "purpose": "Available Jinja2 templates and their fields. All live in ucgen/templates/*.md.j2",
+
+  "templates": {
+    "default": {
+      "file": "ucgen/templates/default.md.j2",
+      "description": "Standard full use case with all sections. Used by default.",
+      "sections": ["yaml_frontmatter", "preconditions", "minimal_guarantee", "success_guarantee", "normal_course", "alternative_courses", "postconditions", "information_requirements", "implied_entities", "nfr", "open_issues"]
+    },
+    "minimal": {
+      "file": "ucgen/templates/minimal.md.j2",
+      "description": "Quick capture. Actor, trigger, normal course only.",
+      "sections": ["yaml_frontmatter", "trigger", "normal_course", "implied_entities"]
+    },
+    "api": {
+      "file": "ucgen/templates/api.md.j2",
+      "description": "API-endpoint-focused. Includes request/response tables.",
+      "sections": ["yaml_frontmatter", "preconditions", "normal_course", "api_spec_table", "implied_entities", "nfr"]
+    },
+    "cockburn-full": {
+      "file": "ucgen/templates/cockburn-full.md.j2",
+      "description": "Full Cockburn format with all fields including stakeholders, guarantees, open issues.",
+      "sections": ["yaml_frontmatter", "scope_and_level", "stakeholders_and_interests", "preconditions", "minimal_guarantee", "success_guarantee", "normal_course", "alternative_courses", "postconditions", "information_requirements", "state_machine", "nfr", "open_issues", "implied_entities"]
+    },
+    "enterprise": {
+      "file": "ucgen/templates/enterprise.md.j2",
+      "description": "Enterprise format with full NFRs, scale hints, state machine, service boundary.",
+      "sections": ["yaml_frontmatter", "executive_summary", "stakeholders", "scale_and_nfr", "preconditions", "minimal_guarantee", "success_guarantee", "normal_course", "alternative_courses", "state_machine", "implied_entities", "architecture_notes", "open_issues"]
+    }
+  },
+
+  "yaml_frontmatter_fields": [
+    "uc_id", "title", "actor", "goal_level", "domain", "system_boundary",
+    "trigger", "priority", "status", "generator", "provider", "model",
+    "generated_at", "duration_ms", "tags", "stakeholders", "nfr", "scale_hints"
+  ],
+
+  "jinja2_variables": {
+    "intake": "IntakeResult object — all fields available as intake.field_name",
+    "sections": "SectionsResult object",
+    "entities": "EntitiesResult object",
+    "config": "Config object",
+    "generated_at": "datetime string formatted as ISO 8601",
+    "generator_version": "ucgen version string"
+  },
+
+  "custom_template_note": "Users can set template to an absolute Path in .ucgenrc.toml. Any .j2 file with above variables works."
+}

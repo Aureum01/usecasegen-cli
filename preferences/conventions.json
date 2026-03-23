@@ -1,0 +1,59 @@
+{
+  "file": "preferences/conventions.json",
+  "purpose": "Developer-specific rules and style preferences. Override knowledge/ dictionaries. Edit freely.",
+
+  "instruction_to_cursor": "These rules take precedence over knowledge/ dictionaries. When conflict exists, follow this file.",
+
+  "naming": {
+    "database_ids": "Always name primary keys 'id', never 'uuid' or '{table}_id' for the PK",
+    "booleans": "Prefix with is_ or has_ or can_ — never 'active', 'enabled', 'flag'",
+    "async_functions": "Never suffix with _async — async is visible from signature",
+    "private_functions": "Single underscore prefix only — never double underscore except dunder",
+    "constants": "UPPER_SNAKE_CASE in constants.py — never inline in function bodies"
+  },
+
+  "python_patterns": {
+    "early_returns": "Prefer early returns for guard clauses — never deeply nested if-else",
+    "preferred": "if not user:\n    raise ValueError('user required')\ndo_thing(user)",
+    "avoid": "if user:\n    if user.active:\n        do_thing(user)",
+    "list_comprehensions": "Simple transforms only. Condition AND transform -> use a for loop.",
+    "string_formatting": "f-strings for user-facing. %-formatting for log messages only."
+  },
+
+  "function_design": {
+    "single_responsibility": "If you need 'and' to describe what it does, split it",
+    "max_parameters": "No more than 4. Group into dataclass if more needed.",
+    "return_types": "Always explicit. Never implicit None on functions doing real work.",
+    "side_effects": "Functions returning values should not have side effects."
+  },
+
+  "testing": {
+    "naming": "test_{function_name}_{scenario}",
+    "one_assert": "Preferred — each test proves one thing",
+    "no_magic_numbers": "All test values must be named constants or fixture parameters"
+  },
+
+  "comments": {
+    "rule": "Comment WHY, never WHAT. If code needs a comment to explain what it does, rewrite it.",
+    "todo_format": "# TODO(initials): description",
+    "never": "Commented-out code — delete it, git history exists"
+  },
+
+  "style": {
+    "density": "Readable over clever. Junior-readable preferred.",
+    "line_count": "More lines with clear intent over fewer compressed lines.",
+    "abstractions": "Only add class/abstraction when same pattern appears 3+ times.",
+    "variable_names": "Full words over abbreviations except universal (i, n, e for exceptions)",
+    "preferred_names": ["intake_result", "provider_name", "output_directory"],
+    "avoid_names": ["ir", "pn", "out_dir"],
+    "function_length": "Under 30 lines. Approach 30 -> look for natural extraction.",
+    "imports": "Explicit always — never wildcard"
+  },
+
+  "output_messages": {
+    "tone": "Direct and informative. Never cutesy. Minimal emoji.",
+    "success": "State what was done and where. e.g. 'Generated UC-2026-0001 → ./use-cases/...'",
+    "error": "State what failed, why if known, what to check.",
+    "progress": "Show what stage is running — users should never wonder if it hung."
+  }
+}

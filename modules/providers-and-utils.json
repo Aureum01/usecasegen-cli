@@ -1,0 +1,112 @@
+{
+  "file": "modules/providers-and-utils.json",
+  "purpose": "All provider classes, ProviderFactory, and all utility functions",
+
+  "providers": {
+    "GenerationResult": {
+      "type": "dataclass",
+      "file": "ucgen/providers/base.py",
+      "fields": [
+        {"name": "content", "type": "str"},
+        {"name": "model", "type": "str"},
+        {"name": "provider", "type": "str"},
+        {"name": "tokens_used", "type": "int | None"},
+        {"name": "duration_ms", "type": "int"}
+      ]
+    },
+
+    "BaseProvider": {
+      "type": "ABC",
+      "file": "ucgen/providers/base.py",
+      "abstract_methods": [
+        "async def generate(self, system: str, user: str, temperature: float = 0.3, max_tokens: int = 2000) -> GenerationResult",
+        "def is_available(self) -> bool"
+      ],
+      "concrete_methods": [
+        "@property def name(self) -> str"
+      ]
+    },
+
+    "OllamaProvider": {
+      "file": "ucgen/providers/ollama.py",
+      "constructor": "__init__(self, model: str = 'mistral', base_url: str = 'http://localhost:11434')",
+      "is_available": "GET {base_url}/api/tags with 2s timeout. Return True if 200.",
+      "generate_endpoint": "POST {base_url}/api/chat",
+      "generate_payload": {"model": "self.model", "messages": "system+user", "options": {"temperature": "float", "num_predict": "int"}, "stream": false},
+      "response_content": "data['message']['content']",
+      "response_tokens": "data.get('eval_count')",
+      "timeout": 120,
+      "name": "return 'ollama'"
+    },
+
+    "AnthropicProvider": {
+      "file": "ucgen/providers/anthropic_provider.py",
+      "constructor": "__init__(self, model: str = 'claude-sonnet-4-6', api_key: str | None = None)",
+      "is_available": "Return bool(os.getenv('ANTHROPIC_API_KEY') or self._api_key)",
+      "generate_note": "anthropic SDK is synchronous. Use: result = await asyncio.to_thread(self.client.messages.create, **kwargs)",
+      "response_content": "msg.content[0].text",
+      "response_tokens": "msg.usage.input_tokens + msg.usage.output_tokens",
+      "name": "return 'anthropic'"
+    },
+
+    "OpenAICompatibleProvider": {
+      "file": "ucgen/providers/openai_provider.py",
+      "constructor": "__init__(self, model: str = 'gpt-4o-mini', api_key: str | None = None, base_url: str | None = None, provider_name: str = 'openai')",
+      "covers": ["OpenAI", "Groq", "Together AI", "Mistral API", "LM Studio", "any OpenAI-compatible endpoint"],
+      "groq_example": "OpenAICompatibleProvider(model='llama-3.3-70b-versatile', base_url='https://api.groq.com/openai/v1', provider_name='groq')",
+      "is_available": "Return bool(api_key or OPENAI_API_KEY or GROQ_API_KEY env vars)",
+      "generate_note": "Use AsyncOpenAI — natively async, no to_thread needed",
+      "response_content": "r.choices[0].message.content",
+      "response_tokens": "r.usage.total_tokens",
+      "name": "return self._provider_name"
+    },
+
+    "ProviderFactory": {
+      "file": "ucgen/providers/factory.py",
+      "method": "@staticmethod def create(config: Config) -> BaseProvider",
+      "docstring": "Resolve and instantiate provider from config.\n\nRaises:\n    ValueError: If config.provider not recognised.",
+      "mapping": {
+        "ollama": "OllamaProvider(model=config.model, base_url=config.ollama_base_url)",
+        "anthropic": "AnthropicProvider(model=config.model)",
+        "openai": "OpenAICompatibleProvider(model=config.model, provider_name='openai')",
+        "groq": "OpenAICompatibleProvider(model=config.model, base_url='https://api.groq.com/openai/v1', provider_name='groq')",
+        "custom": "OpenAICompatibleProvider(model=config.model, base_url=config.custom_base_url, provider_name='custom')"
+      }
+    }
+  },
+
+  "utils": {
+    "json_extract": {
+      "file": "ucgen/utils/json_extract.py",
+      "function": "def extract_json(raw: str) -> dict",
+      "docstring": "Extract outermost JSON object from raw LLM output with preamble, fences, or commentary.\n\nRaises:\n    JSONExtractError: If no valid JSON found.",
+      "strategy": [
+        "Strip ```json and ``` code fences",
+        "re.search(r'\\{.*\\}', cleaned, re.DOTALL) to find bounds",
+        "json.loads() on match",
+        "On failure: raise JSONExtractError with raw[:500]"
+      ]
+    },
+
+    "id_counter": {
+      "file": "ucgen/utils/id_counter.py",
+      "function": "def next_id(output_dir: Path, prefix: str = 'UC') -> str",
+      "docstring": "Read and increment ID counter from output_dir/.ucgen_counter.\n\nFormat: {prefix}-{YYYY}-{NNNN}\nCreates file with value 1 if not exists.",
+      "format_example": "UC-2026-0001"
+    },
+
+    "table_formatter": {
+      "file": "ucgen/utils/table_formatter.py",
+      "function": "def format_table(raw_table: str) -> str",
+      "docstring": "Normalize markdown table column widths regardless of LLM output alignment.",
+      "strategy": ["Split rows by newline", "Split cells by |", "Calculate max width per column", "Re-render with padding", "Rebuild separator row"]
+    },
+
+    "prompt_loader": {
+      "file": "ucgen/utils/prompt_loader.py",
+      "function": "def load_prompt(name: str, custom_dir: Path | None = None) -> str",
+      "docstring": "Load prompt .md file by name with module-level cache.\n\nResolution order:\n    1. custom_dir/{name}.md if custom_dir set\n    2. ucgen/prompts/{name}.md from package",
+      "caching": "_cache: dict[str, str] = {}  # module level, one read per process"
+    }
+  }
+}

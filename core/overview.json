@@ -1,0 +1,98 @@
+{
+  "file": "core/overview.json",
+  "purpose": "Design philosophy, pipeline stages, and module map in one file",
+
+  "design_philosophy": {
+    "principles": [
+      "Each generation stage is a separate focused LLM call — never one giant prompt",
+      "Providers are fully interchangeable — same BaseProvider interface, different backends",
+      "Prompts are external .md files loaded at runtime — never inline Python strings",
+      "Templates are Jinja2 .j2 files — never f-strings for document assembly",
+      "Assembler stage is pure Python — no LLM in final document construction",
+      "All LLM calls are async — asyncio.run() called exactly once in cli.py",
+      "Fail loud: never write a partial document, always surface errors with full context",
+      "Three extension seams only: BaseProvider, Jinja2 templates, lifecycle hooks"
+    ]
+  },
+
+  "pipeline_stages": [
+    {
+      "id": 1,
+      "name": "intake",
+      "input": "raw string from user",
+      "output_type": "IntakeResult",
+      "prompt_file": "ucgen/prompts/stage1_intake.md",
+      "llm_required": true,
+      "retry": {"max": 1, "temperature": 0.1},
+      "on_failure": "raise IntakeParseError with raw_output attached"
+    },
+    {
+      "id": 2,
+      "name": "sections",
+      "input": "IntakeResult",
+      "output_type": "SectionsResult",
+      "prompt_file": "ucgen/prompts/stage2_sections.md",
+      "llm_required": true,
+      "retry": {"max": 1, "temperature": 0.1},
+      "on_failure": "raise SectionsParseError"
+    },
+    {
+      "id": 3,
+      "name": "entities",
+      "input": "IntakeResult + SectionsResult",
+      "output_type": "EntitiesResult",
+      "prompt_file": "ucgen/prompts/stage3_entities.md",
+      "llm_required": true,
+      "retry": {"max": 1, "temperature": 0.1},
+      "on_failure": "fallback to minimal entities from IntakeResult.related_entities — log WARNING, do not raise"
+    },
+    {
+      "id": 4,
+      "name": "assemble",
+      "input": "IntakeResult + SectionsResult + EntitiesResult + Config",
+      "output_type": "UseCaseDocument",
+      "prompt_file": null,
+      "llm_required": false,
+      "on_failure": "raise AssemblerError — should never happen with valid inputs"
+    }
+  ],
+
+  "module_map": {
+    "ucgen/__init__.py": "Package version export only. __version__ = '0.1.0'",
+    "ucgen/cli.py": "Typer CLI. All commands. Zero business logic — delegates entirely.",
+    "ucgen/generator.py": "Orchestrates 4-stage pipeline. Only module that calls providers.",
+    "ucgen/assembler.py": "Pure Python Jinja2 renderer. No LLM. Takes all stage results, returns markdown string.",
+    "ucgen/schema.py": "All Pydantic v2 models. Single source of truth for data shapes.",
+    "ucgen/config.py": "Loads .ucgenrc.toml project then home. Returns typed Config object.",
+    "ucgen/project_runner.py": "Reads ucgen.yaml, orchestrates multi-use-case runs. Tier 2 feature.",
+    "ucgen/validator.py": "Validates existing .md use case files against ucgen schema.",
+    "ucgen/exporter.py": "Converts UseCaseDocument to JSON or YAML string.",
+    "ucgen/errors.py": "All custom exception classes. Single file.",
+    "ucgen/providers/__init__.py": "Exports ProviderFactory only.",
+    "ucgen/providers/base.py": "Abstract BaseProvider + GenerationResult dataclass.",
+    "ucgen/providers/ollama.py": "OllamaProvider — async httpx to local Ollama REST API.",
+    "ucgen/providers/anthropic_provider.py": "AnthropicProvider — official anthropic SDK via asyncio.to_thread.",
+    "ucgen/providers/openai_provider.py": "OpenAICompatibleProvider — openai AsyncClient. Covers OpenAI, Groq, Together, LM Studio.",
+    "ucgen/providers/factory.py": "ProviderFactory.create(config) -> BaseProvider.",
+    "ucgen/utils/json_extract.py": "extract_json(raw) — robustly extracts JSON from LLM output with commentary.",
+    "ucgen/utils/id_counter.py": "next_id(output_dir) — reads/increments .ucgen_counter file.",
+    "ucgen/utils/table_formatter.py": "format_table(raw) — normalizes markdown table column widths.",
+    "ucgen/utils/prompt_loader.py": "load_prompt(name) — loads and caches prompt .md files.",
+    "ucgen/prompts/system_base.md": "Shared persona injected into every stage system prompt.",
+    "ucgen/prompts/stage1_intake.md": "Stage 1 prompt content.",
+    "ucgen/prompts/stage2_sections.md": "Stage 2 prompt content.",
+    "ucgen/prompts/stage3_entities.md": "Stage 3 prompt content.",
+    "ucgen/templates/default.md.j2": "Standard full use case template.",
+    "ucgen/templates/minimal.md.j2": "Quick capture template.",
+    "ucgen/templates/api.md.j2": "API-focused use case template.",
+    "ucgen/templates/cockburn-full.md.j2": "Full Cockburn format with all fields.",
+    "ucgen/templates/enterprise.md.j2": "Enterprise format with NFRs, scale hints, state machine."
+  },
+
+  "provider_quality_tiers": [
+    {"provider": "ollama", "models": ["mistral", "qwen2.5:14b"], "quality": "Good", "cost": "Free", "recommended_for": "Tier 1 offline"},
+    {"provider": "groq", "models": ["llama-3.3-70b-versatile"], "quality": "Excellent", "cost": "Free tier generous", "recommended_for": "Tier 1/2 free cloud"},
+    {"provider": "anthropic", "models": ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"], "quality": "Best consistency", "cost": "~$0.003/doc", "recommended_for": "Tier 2/3 production"},
+    {"provider": "openai", "models": ["gpt-4o-mini", "gpt-4o"], "quality": "Excellent", "cost": "~$0.001/doc", "recommended_for": "Tier 2/3 production"}
+  ]
+}

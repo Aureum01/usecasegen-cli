@@ -1,0 +1,6 @@
+# id	summary	date	status
+D-001	3-stage sequential pipeline not concurrent	2026-03-22	active
+D-002	Prompts as external .md files	2026-03-22	active
+D-003	OpenAICompatibleProvider covers Groq/Together via base_url	2026-03-22	active
+D-004	TOML for .ucgenrc, YAML for ucgen.yaml	2026-03-22	active
+D-005	Python over Go/C#	2026-03-22	active

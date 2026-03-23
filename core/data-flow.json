@@ -1,0 +1,87 @@
+{
+  "file": "core/data-flow.json",
+  "purpose": "Step-by-step data flow for happy path, all error paths, and YAML project run path",
+
+  "happy_path_single": [
+    {"step": 1, "actor": "cli.py", "action": "Parse CLI args. Load Config. Apply flag overrides. Check ucgen.yaml absent for single mode."},
+    {"step": 2, "actor": "cli.py", "action": "ProviderFactory.create(config) -> provider. Call provider.is_available(). Exit with clear message if False."},
+    {"step": 3, "actor": "cli.py", "action": "asyncio.run(generator.generate(idea, config, provider))"},
+    {"step": 4, "actor": "generator.py", "action": "id_counter.next_id(config.output_dir) -> uc_id"},
+    {"step": 5, "actor": "generator.py", "action": "await _run_intake(idea, uc_id, config, provider) -> IntakeResult"},
+    {"step": 6, "actor": "generator.py", "action": "await _run_sections(intake, config, provider) -> SectionsResult"},
+    {"step": 7, "actor": "generator.py", "action": "await _run_entities(intake, sections, config, provider) -> EntitiesResult"},
+    {"step": 8, "actor": "generator.py", "action": "assembler.assemble(intake, sections, entities, config) -> raw_markdown string"},
+    {"step": 9, "actor": "generator.py", "action": "Return UseCaseDocument with all results + timing"},
+    {"step": 10, "actor": "cli.py", "action": "Write .md file to output_dir. Run on_generate hook if configured."},
+    {"step": 11, "actor": "cli.py", "action": "Print Rich summary: file path, UC ID, provider, model, duration_ms"}
+  ],
+
+  "yaml_project_run_path": [
+    {"step": 1, "actor": "cli.py (run command)", "action": "project_runner.load_project(Path('ucgen.yaml')) -> ProjectDefinition. Fail clearly if PyYAML not installed."},
+    {"step": 2, "actor": "cli.py", "action": "Merge project.defaults into Config. Apply filter_id or filter_tag if passed."},
+    {"step": 3, "actor": "project_runner.py", "action": "Filter use_cases by id/tag/status=pending. Show Rich progress bar."},
+    {"step": 4, "actor": "project_runner.py", "action": "For each use case: asyncio.run(generator.generate(uc.goal, config, provider))"},
+    {"step": 5, "actor": "project_runner.py", "action": "Write file. Update ucgen.yaml use_case status to 'generated'."},
+    {"step": 6, "actor": "cli.py", "action": "Run on_batch_complete hook. Print summary table."}
+  ],
+
+  "yaml_frontmatter_in_output": {
+    "note": "Every generated .md file starts with YAML frontmatter block",
+    "format": "--- ... ---",
+    "fields": ["uc_id", "title", "actor", "goal_level", "domain", "system_boundary", "trigger", "priority", "status", "generator", "provider", "model", "generated_at", "duration_ms", "tags", "stakeholders", "nfr", "scale_hints"],
+    "why": "Machine-readable for ucgen validate, ucgen status, CI tooling, and documentation site generators"
+  },
+
+  "error_paths": {
+    "provider_unavailable": "Exit before pipeline. Rich error panel with diagnostic: is Ollama running? Is API key set?",
+    "stage_parse_failure": "Log WARNING with raw output. Retry once at temp=0.1. On second failure: write raw to .ucgen_debug/. Raise GenerationError.",
+    "entity_stage_failure": "Fallback to minimal entities from intake.related_entities. Log WARNING. Continue to assemble.",
+    "template_render_failure": "Raise AssemblerError — should never happen with valid schema models.",
+    "file_write_failure": "Print generated markdown to stdout as fallback. Log ERROR.",
+    "yaml_project_not_found": "Exit with clear message: 'No ucgen.yaml found. Run ucgen init-project or specify --file.'",
+    "yaml_dep_missing": "Exit with: 'Project files require PyYAML. Run: pip install ucgen[project]'"
+  },
+
+  "data_contracts": {
+    "IntakeResult": {
+      "uc_id": "str — UC-{YYYY}-{NNNN}",
+      "title": "str — proper use case title",
+      "goal_level": "str — summary | user_goal | subfunction",
+      "actor": "str — role, never a person name",
+      "supporting_actors": "list[str] — external systems or roles called by this use case",
+      "stakeholders": "list[dict] — [{name, interest}]",
+      "domain": "str",
+      "system_boundary": "str | None — which service/component owns this",
+      "trigger": "str — specific event",
+      "goal": "str — one sentence",
+      "related_entities": "list[str]",
+      "scale_hints": "dict | None — {frequency, concurrent_users, data_volume}",
+      "raw_input": "str"
+    },
+    "SectionsResult": {
+      "preconditions": "list[str] — 3-6 verifiable states",
+      "minimal_guarantee": "str — what system promises even on failure (Cockburn)",
+      "success_guarantee": "str — what is true for all stakeholders after success",
+      "normal_course": "list[NormalCourseStep]",
+      "alternative_courses": "list[AlternativeCourse]",
+      "postconditions": "list[str]",
+      "information_requirements": "list[InfoRequirement]",
+      "nfr": "list[dict] | None — [{type, requirement, threshold}]",
+      "state_machine": "list[dict] | None — [{state, transitions}] when entity has lifecycle",
+      "open_issues": "list[str] | None — Cockburn open issues field"
+    },
+    "EntitiesResult": {
+      "entities": "list[Entity]"
+    },
+    "UseCaseDocument": {
+      "metadata": "IntakeResult",
+      "sections": "SectionsResult",
+      "entities": "EntitiesResult",
+      "raw_markdown": "str — final assembled document including YAML frontmatter",
+      "generated_at": "datetime UTC",
+      "provider": "str",
+      "model": "str",
+      "duration_ms": "int"
+    }
+  }
+}

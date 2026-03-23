@@ -1,0 +1,128 @@
+{
+  "file": "modules/cli.json",
+  "python_file": "ucgen/cli.py",
+  "purpose": "Typer CLI. All commands defined here. Zero business logic — delegates everything.",
+
+  "app_init": "app = typer.Typer(name='ucgen', help='Generate structured use case documents from natural language.', no_args_is_help=True)",
+
+  "commands": [
+    {
+      "name": "generate",
+      "decorator": "@app.command()",
+      "is_default": true,
+      "signature": "def generate(idea: str = typer.Argument(...), actor: Optional[str] = typer.Option(None), output: Optional[Path] = typer.Option(None, '-o'), provider: Optional[str] = typer.Option(None), model: Optional[str] = typer.Option(None), format: str = typer.Option('markdown'), stdin: bool = typer.Option(False, '--stdin'), append: Optional[Path] = typer.Option(None))",
+      "behavior": [
+        "If --stdin: read idea from sys.stdin",
+        "Load config. Apply CLI overrides.",
+        "ProviderFactory.create(config)",
+        "asyncio.run(generator.generate(idea, config, provider))",
+        "Write output based on --format flag",
+        "If --append: append to existing file with --- separator",
+        "Run config.hooks.on_generate if set",
+        "Print Rich summary panel"
+      ]
+    },
+    {
+      "name": "run",
+      "decorator": "@app.command()",
+      "signature": "def run(id: Optional[str] = typer.Option(None, '--id'), tag: Optional[str] = typer.Option(None, '--tag'), file: Path = typer.Option(Path('ucgen.yaml'), '--file'))",
+      "docstring": "Read ucgen.yaml and generate defined use cases. Tier 2 feature.",
+      "behavior": [
+        "Check PyYAML installed — exit with pip install ucgen[project] if not",
+        "project_runner.load_project(file) -> ProjectDefinition",
+        "Merge project.defaults into Config",
+        "asyncio.run(project_runner.run_project(project, config, provider, filter_id=id, filter_tag=tag))",
+        "Run on_batch_complete hook",
+        "Print Rich summary table"
+      ]
+    },
+    {
+      "name": "status",
+      "decorator": "@app.command()",
+      "signature": "def status(file: Path = typer.Option(Path('ucgen.yaml'), '--file'))",
+      "docstring": "Show generation status of all use cases in ucgen.yaml.",
+      "behavior": [
+        "Load project definition",
+        "project_runner.get_project_status(project, config.output_dir)",
+        "Print Rich table: UC-ID | Title | Actor | Status | Generated At | File"
+      ]
+    },
+    {
+      "name": "batch",
+      "decorator": "@app.command()",
+      "signature": "def batch(input_file: Path = typer.Argument(...), output: Optional[Path] = typer.Option(None, '-o'), provider: Optional[str] = typer.Option(None), model: Optional[str] = typer.Option(None))",
+      "docstring": "Generate use cases from a file. Supports .txt (one idea per line) or .yaml (structured).",
+      "behavior": [
+        "Detect format from file extension",
+        "If .txt: read lines, skip blank and # comments",
+        "If .yaml: parse as list of {title, actor, context, priority} dicts",
+        "Run generate() for each with Rich progress bar",
+        "Print summary: N succeeded, M failed"
+      ]
+    },
+    {
+      "name": "validate",
+      "decorator": "@app.command()",
+      "signature": "def validate(path: Path = typer.Argument(...))",
+      "docstring": "Validate a .md use case file or directory of .md files.",
+      "behavior": [
+        "If path is dir: validate all .md files",
+        "Call validator.validate_file(file) for each",
+        "Print Rich table with per-section PASS/FAIL",
+        "Exit code 1 if any failure"
+      ]
+    },
+    {
+      "name": "init",
+      "decorator": "@app.command()",
+      "signature": "def init()",
+      "docstring": "Create .ucgenrc.toml with defaults in current directory.",
+      "behavior": ["Check exists, prompt overwrite", "Write commented example config"]
+    },
+    {
+      "name": "init_project",
+      "decorator": "@app.command(name='init-project')",
+      "signature": "def init_project(name: str = typer.Argument(...), domain: Optional[str] = typer.Option(None))",
+      "docstring": "Scaffold a ucgen.yaml for a new project.",
+      "behavior": ["Interactive prompts for actors", "Write ucgen.yaml to cwd", "Create output_dir"]
+    },
+    {
+      "name": "log",
+      "decorator": "@app.command()",
+      "signature": "def log(quick: Optional[str] = typer.Option(None, '--quick', help='One-liner mistake description'))",
+      "docstring": "Log a correction to memory/mistakes/ so it is never repeated.",
+      "behavior": [
+        "If --quick: parse from git diff --name-only HEAD for file, use quick string as description",
+        "If interactive: prompt for file, what happened, why wrong, correct approach",
+        "Auto-generate M-NNN ID from mistakes.idx line count + 1",
+        "Write M-NNN.json to memory/mistakes/",
+        "Append line to memory/mistakes.idx",
+        "Confirm written"
+      ]
+    },
+    {
+      "name": "gc",
+      "decorator": "@app.command()",
+      "signature": "def gc(dry_run: bool = typer.Option(False, '--dry-run'))",
+      "docstring": "Garbage collect memory: archive old mistakes, graduate high-recurrence to CONVENTIONS.",
+      "behavior": [
+        "Read mistakes.idx",
+        "Archive entries older than 90 days with recurrence=0 to memory/archive/",
+        "Graduate entries with recurrence>=3 to CONVENTIONS file, remove from mistakes",
+        "Show what would change if --dry-run",
+        "Confirm actions interactively"
+      ]
+    },
+    {
+      "name": "version",
+      "decorator": "@app.command()",
+      "signature": "def version()",
+      "docstring": "Print version and provider availability status.",
+      "behavior": ["Print __version__", "Check each provider.is_available()", "Rich status table"]
+    }
+  ],
+
+  "output_filename_format": "{uc_id}-{slug}.md",
+  "slug_rules": "actor + first 3 significant words of goal, lowercased, spaces to hyphens, max 40 chars",
+  "example_filename": "UC-2026-0001-patient-books-appointment.md"
+}

@@ -1,0 +1,55 @@
+# {{ intake.title }}
+
+## Scope and Level
+- Domain: {{ intake.domain }}
+- Goal Level: {{ intake.goal_level }}
+- System Boundary: {{ intake.system_boundary or "N/A" }}
+
+## Stakeholders and Interests
+{% for s in intake.stakeholders %}- {{ s.name }}: {{ s.interest }}
+{% endfor %}
+
+## Preconditions
+{% for item in sections.preconditions %}- {{ item }}
+{% endfor %}
+
+## Minimal Guarantee
+{{ sections.minimal_guarantee }}
+
+## Success Guarantee
+{{ sections.success_guarantee }}
+
+## Normal Course
+{% for step in sections.normal_course %}{{ step.step }}. {{ step.actor }}: {{ step.action }} -> {{ step.system_response }}
+{% endfor %}
+
+## Alternative Courses
+{% for alt in sections.alternative_courses %}- {{ alt.ref }}: {{ alt.condition }} - {{ alt.response }}
+{% endfor %}
+
+## Postconditions
+{% for item in sections.postconditions %}- {{ item }}
+{% endfor %}
+
+## Information Requirements
+{% for req in sections.information_requirements %}- Step {{ req.step }}: {{ req.data_needed }} ({{ req.source }}, {{ req.format }})
+{% endfor %}
+
+## State Machine
+{% if sections.state_machine %}{% for state in sections.state_machine %}- {{ state.state }} -> {{ state.transitions | join(", ") }}
+{% endfor %}{% else %}- None
+{% endif %}
+
+## NFR
+{% if sections.nfr %}{% for req in sections.nfr %}- {{ req.type }}: {{ req.requirement }}{% if req.threshold %} ({{ req.threshold }}){% endif %}
+{% endfor %}{% else %}- None
+{% endif %}
+
+## Open Issues
+{% if sections.open_issues %}{% for issue in sections.open_issues %}- {{ issue }}
+{% endfor %}{% else %}- None
+{% endif %}
+
+## Implied Entities
+{% for entity in entities.entities %}- {{ entity.name }}
+{% endfor %}

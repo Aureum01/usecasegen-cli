@@ -1,0 +1,218 @@
+{
+  "project": "ucgen",
+  "version": "0.1.0",
+  "language": "Python 3.11+",
+  "description": "CLI tool that generates structured use case documents in markdown from natural language input. Supports local Ollama and remote APIs (Anthropic, OpenAI-compatible, Groq). Includes a project discovery file (ucgen.yaml) for team and enterprise workflows.",
+
+  "tier_design": {
+    "tier1_solo": {
+      "label": "Solo developer / student / freelancer",
+      "requirement": "pip install ucgen && ucgen 'booking system' works in under 3 minutes with zero config",
+      "non_negotiable": true
+    },
+    "tier2_team": {
+      "label": "Small team / startup (2-15 engineers)",
+      "requirement": "ucgen.yaml in project root enables team config. All team features are additive — nothing breaks Tier 1.",
+      "extras": ["ucgen.yaml project discovery file", "ucgen run / status commands", "batch YAML input", "shared .ucgenrc.toml", "CI integration via ucgen validate"]
+    },
+    "tier3_enterprise": {
+      "label": "Agency / enterprise / large team",
+      "requirement": "Custom providers, templates, and hooks via documented extension seams. No plugin system needed.",
+      "extension_seams": ["BaseProvider interface", "Jinja2 templates directory", "lifecycle hooks in .ucgenrc.toml"],
+      "docs": "docs/extending/ in the GitHub repo"
+    }
+  },
+
+  "complexity_budget": {
+    "principle": "Every feature must justify its complexity cost against Tier 1 friction. When in doubt, defer.",
+    "current_spend": {
+      "4_stage_pipeline": "justified — this is the core product",
+      "multi_provider": "justified — critical for adoption across all tiers",
+      "custom_templates": "justified — low complexity, high value for Tier 2/3",
+      "lifecycle_hooks": "justified — shell strings only, zero API surface",
+      "memory_system": "justified — git-compact, never touches Tier 1 workflow",
+      "knowledge_dictionaries": "justified — opt-in via knowledge/index.json, zero Tier 1 cost",
+      "ucgen_yaml_project_file": "justified — optional dep PyYAML, Tier 2/3 only"
+    },
+    "explicitly_deferred": [
+      "Plugin system with Python API — adds SDK surface area, complicates core",
+      "Web UI — separate project if ever built",
+      "Real-time collaboration — not a CLI concern",
+      "Cloud sync of memory files — future paid feature",
+      "SQLite history database — v0.2 feature"
+    ]
+  },
+
+  "hard_rules": {
+    "language": "Python 3.11+",
+    "package_manager": "uv",
+    "cli_framework": "Typer with rich extras",
+    "http_client": "httpx async only — never requests in async code",
+    "validation": "Pydantic v2 with ConfigDict(frozen=True) on all models",
+    "templating": "Jinja2 .j2 files — never f-strings for document assembly",
+    "formatting": "Ruff (lint + format)",
+    "testing": "pytest + pytest-asyncio (asyncio_mode=auto)",
+    "docstrings": "Google-style on every public function and class",
+    "never": [
+      "Use print() in library code — use logging module with lazy % formatting",
+      "Hardcode API keys anywhere",
+      "Hardcode model names outside Config defaults",
+      "Write prompts as inline Python strings — always load from ucgen/prompts/*.md",
+      "Use synchronous httpx calls in any provider module",
+      "Call asyncio.run() more than once — only at cli.py top level",
+      "Catch bare Exception without logging and re-raising or wrapping in UCGenError",
+      "Write a partial document on pipeline failure — all stages succeed or nothing is written",
+      "Skip docstrings on any public function or class",
+      "Use os.path — always pathlib.Path for file operations"
+    ]
+  },
+
+  "file_map": {
+    "index.json": "THIS FILE — Cursor entry point. Read first.",
+    "core/overview.json": "Design philosophy, 4-stage pipeline definition, module map, provider quality tiers",
+    "core/data-flow.json": "Step-by-step happy path, YAML project run path, all error paths, data contracts",
+    "schema/all-models.json": "ALL Pydantic v2 models: IntakeResult, SectionsResult, EntitiesResult, UseCaseDocument, ProjectDefinition, and all sub-models",
+    "modules/cli.json": "All 10 Typer commands with signatures, docstrings, and behavior specs",
+    "modules/core-modules.json": "generator.py, assembler.py, config.py, project_runner.py, validator.py, exporter.py",
+    "modules/providers-and-utils.json": "All 4 providers (Ollama, Anthropic, OpenAI-compatible, Factory) + all 4 utils (json_extract, id_counter, table_formatter, prompt_loader)",
+    "modules/errors.json": "Full UCGenError hierarchy with all subclasses",
+    "prompts/all-stages.json": "Exact content for system_base.md, stage1_intake.md, stage2_sections.md, stage3_entities.md",
+    "knowledge/all-knowledge.json": "Python standards, python-cli stack, DB selection rules, Cockburn use case theory, Uber/Spotify real-world patterns",
+    "memory/README.json": "Git-compact memory system: HEAD, .idx indexes, CONVENTIONS file, mistake objects",
+    "memory/decisions/D-001.json thru D-005.json": "Pre-seeded architectural decisions",
+    "memory/mistakes.idx": "Lightweight mistake index — empty on fresh install",
+    "memory/decisions.idx": "Lightweight decision index — 5 decisions pre-seeded",
+    "memory/CONVENTIONS": "Append-only graduated rules — empty on fresh install",
+    "memory/HEAD": "Active context for current session — regenerated by ucgen context",
+    "preferences/conventions.json": "Developer personal rules and style preferences — override knowledge/ dictionaries",
+    "templates/index.json": "5 Jinja2 template definitions: default, minimal, api, cockburn-full, enterprise"
+  },
+
+  "read_order": [
+    "index.json (this file — start here)",
+    "core/overview.json",
+    "core/data-flow.json",
+    "schema/all-models.json",
+    "modules/cli.json",
+    "modules/core-modules.json",
+    "modules/providers-and-utils.json",
+    "modules/errors.json",
+    "prompts/all-stages.json",
+    "knowledge/all-knowledge.json",
+    "memory/README.json",
+    "memory/decisions.idx",
+    "memory/CONVENTIONS",
+    "preferences/conventions.json",
+    "templates/index.json"
+  ],
+
+  "build_order": [
+    "pyproject.toml",
+    "ucgen/__init__.py",
+    "ucgen/errors.py",
+    "ucgen/schema.py",
+    "ucgen/utils/__init__.py",
+    "ucgen/utils/json_extract.py",
+    "ucgen/utils/id_counter.py",
+    "ucgen/utils/table_formatter.py",
+    "ucgen/utils/prompt_loader.py",
+    "ucgen/providers/base.py",
+    "ucgen/providers/ollama.py",
+    "ucgen/providers/anthropic_provider.py",
+    "ucgen/providers/openai_provider.py",
+    "ucgen/providers/factory.py",
+    "ucgen/providers/__init__.py",
+    "ucgen/config.py",
+    "ucgen/assembler.py",
+    "ucgen/generator.py",
+    "ucgen/project_runner.py",
+    "ucgen/validator.py",
+    "ucgen/exporter.py",
+    "ucgen/cli.py",
+    "ucgen/prompts/system_base.md",
+    "ucgen/prompts/stage1_intake.md",
+    "ucgen/prompts/stage2_sections.md",
+    "ucgen/prompts/stage3_entities.md",
+    "ucgen/templates/default.md.j2",
+    "ucgen/templates/minimal.md.j2",
+    "ucgen/templates/api.md.j2",
+    "ucgen/templates/cockburn-full.md.j2",
+    "ucgen/templates/enterprise.md.j2",
+    "tests/__init__.py",
+    "tests/conftest.py",
+    "tests/test_schema.py",
+    "tests/test_utils.py",
+    "tests/test_generator.py",
+    "tests/test_assembler.py",
+    "tests/test_cli.py",
+    "README.md"
+  ],
+
+  "dependencies": {
+    "runtime_core": [
+      "typer[all]>=0.12",
+      "httpx>=0.27",
+      "anthropic>=0.30",
+      "openai>=1.40",
+      "pydantic>=2.7",
+      "jinja2>=3.1",
+      "rich>=13.7",
+      "aiofiles>=23.0"
+    ],
+    "runtime_optional": {
+      "project": ["PyYAML>=6.0"],
+      "install_note": "pip install ucgen[project] enables ucgen.yaml support (Tier 2/3)"
+    },
+    "dev": [
+      "pytest>=8.0",
+      "pytest-asyncio>=0.23",
+      "pytest-mock>=3.12",
+      "ruff>=0.5",
+      "mypy>=1.10"
+    ],
+    "note": "tomllib is stdlib in Python 3.11+ — no separate dep needed for TOML config"
+  },
+
+  "config_files": {
+    "tool_config": ".ucgenrc.toml (TOML via stdlib tomllib — no extra dep)",
+    "project_discovery": "ucgen.yaml (YAML via PyYAML optional dep — pip install ucgen[project])",
+    "separation_rationale": "TOML for simple tool config (stdlib, always available). YAML for rich project discovery files (optional, Tier 2/3 only). Never mix roles."
+  },
+
+  "output_formats": {
+    "primary": "markdown (.md) with YAML frontmatter block at top",
+    "secondary": ["json (--format json)", "yaml (--format yaml, requires PyYAML)"],
+    "frontmatter_note": "YAML frontmatter is always generated deterministically from Pydantic models — never by the LLM"
+  },
+
+  "input_formats": {
+    "tier1_single": "ucgen 'natural language idea'",
+    "tier1_stdin": "echo 'idea' | ucgen --stdin",
+    "tier2_batch_text": "ucgen batch ideas.txt (one idea per line, # lines skipped)",
+    "tier2_batch_yaml": "ucgen batch ideas.yaml (structured with actor, context, priority per idea)",
+    "tier2_project": "ucgen run (reads ucgen.yaml project discovery file)"
+  },
+
+  "key_design_decisions": {
+    "D-001": "3-stage sequential pipeline — stages are NOT concurrent, each needs previous output",
+    "D-002": "Prompts are external .md files loaded at runtime — never inline Python strings",
+    "D-003": "OpenAICompatibleProvider covers Groq/Together/LM Studio via base_url — no separate classes",
+    "D-004": "TOML for .ucgenrc, YAML for ucgen.yaml — different roles, not redundancy",
+    "D-005": "Python 3.11+ — AI SDK ecosystem, Typer/Pydantic/Rich, pip distribution all favor Python",
+    "full_details": "See memory/decisions/ for full reasoning on each decision"
+  },
+
+  "github_repo_structure": {
+    "tier1_visible": ["README.md (fold after first example)", "examples/", "docs/getting-started.md"],
+    "tier2_discoverable": ["docs/configuration.md", "docs/project-files/", "docs/team-workflows.md", "templates/"],
+    "tier3_reachable": ["docs/extending/", "docs/resources/", "docs/integration/", "ucgen-spec/ (this folder)"]
+  },
+
+  "memory_system_quickref": {
+    "log_a_mistake": "ucgen log  OR  ucgen log --quick 'description'",
+    "log_a_decision": "Add D-NNN.json to memory/decisions/ and a line to decisions.idx",
+    "garbage_collect": "ucgen gc  (archives old, graduates high-recurrence to CONVENTIONS)",
+    "refresh_context": "ucgen context  (regenerates HEAD based on git diff --name-only HEAD)",
+    "cursor_reads": "HEAD first, then listed mistake/decision objects, then CONVENTIONS always"
+  }
+}

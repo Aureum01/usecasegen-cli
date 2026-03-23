@@ -1,0 +1,12 @@
+# {{ intake.title }}
+
+## Trigger
+{{ intake.trigger }}
+
+## Normal Course
+{% for step in sections.normal_course %}{{ step.step }}. {{ step.actor }}: {{ step.action }}
+{% endfor %}
+
+## Implied Entities
+{% for entity in entities.entities %}- {{ entity.name }}
+{% endfor %}

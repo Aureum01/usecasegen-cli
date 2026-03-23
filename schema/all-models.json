@@ -1,0 +1,192 @@
+{
+  "file": "schema/all-models.json",
+  "python_file": "ucgen/schema.py",
+  "purpose": "All Pydantic v2 models. Single source of truth. model_config = ConfigDict(frozen=True) on all.",
+
+  "models": {
+    "IntakeResult": {
+      "docstring": "Structured metadata extracted from raw user input in pipeline stage 1.",
+      "fields": [
+        {"name": "uc_id", "type": "str", "example": "UC-2026-0001"},
+        {"name": "title", "type": "str", "example": "Patient Books Appointment"},
+        {"name": "goal_level", "type": "str", "allowed": ["summary", "user_goal", "subfunction"], "default": "user_goal"},
+        {"name": "actor", "type": "str", "note": "Role, never a person name"},
+        {"name": "supporting_actors", "type": "list[str]", "note": "External systems or roles this use case calls"},
+        {"name": "stakeholders", "type": "list[StakeholderEntry]"},
+        {"name": "domain", "type": "str"},
+        {"name": "system_boundary", "type": "str | None", "note": "Service/component that owns this use case"},
+        {"name": "trigger", "type": "str"},
+        {"name": "goal", "type": "str"},
+        {"name": "related_entities", "type": "list[str]"},
+        {"name": "scale_hints", "type": "ScaleHints | None"},
+        {"name": "raw_input", "type": "str"}
+      ]
+    },
+
+    "StakeholderEntry": {
+      "docstring": "A stakeholder and their interest in this use case outcome.",
+      "fields": [
+        {"name": "name", "type": "str"},
+        {"name": "interest", "type": "str", "note": "One sentence: what this stakeholder needs from this use case"}
+      ]
+    },
+
+    "ScaleHints": {
+      "docstring": "Frequency and scale signals that inform database and architecture selection.",
+      "fields": [
+        {"name": "frequency", "type": "str | None", "example": "~50 bookings per day per clinic"},
+        {"name": "concurrent_users", "type": "str | None", "example": "~10 simultaneous at peak"},
+        {"name": "data_volume", "type": "str | None", "example": "~5MB per month"}
+      ]
+    },
+
+    "NormalCourseStep": {
+      "docstring": "A single step in the use case Normal Course of Events.",
+      "fields": [
+        {"name": "step", "type": "int"},
+        {"name": "actor", "type": "str", "note": "Actor name or 'System'"},
+        {"name": "action", "type": "str", "note": "Present tense, single action, no UI language"},
+        {"name": "system_response", "type": "str", "note": "What system does in response. '—' if step is actor-only."}
+      ]
+    },
+
+    "AlternativeCourse": {
+      "docstring": "An alternative path branching from a specific normal course step.",
+      "fields": [
+        {"name": "ref", "type": "str", "example": "2a"},
+        {"name": "condition", "type": "str"},
+        {"name": "response", "type": "str"}
+      ]
+    },
+
+    "InfoRequirement": {
+      "docstring": "Data element required at a specific step.",
+      "fields": [
+        {"name": "step", "type": "int"},
+        {"name": "data_needed", "type": "str"},
+        {"name": "source", "type": "str", "note": "Likely table or service"},
+        {"name": "format", "type": "str", "example": "UUID, ISO 8601, decimal(10,2)"}
+      ]
+    },
+
+    "NFREntry": {
+      "docstring": "Non-functional requirement specific to this use case.",
+      "fields": [
+        {"name": "type", "type": "str", "allowed": ["latency", "availability", "consistency", "throughput", "compliance", "security"]},
+        {"name": "requirement", "type": "str"},
+        {"name": "threshold", "type": "str | None", "example": "p99 < 500ms"}
+      ]
+    },
+
+    "StateMachineState": {
+      "docstring": "A state in an entity's lifecycle state machine.",
+      "fields": [
+        {"name": "state", "type": "str", "example": "requested"},
+        {"name": "transitions", "type": "list[str]", "example": ["matched", "cancelled"]}
+      ]
+    },
+
+    "SectionsResult": {
+      "docstring": "Use case body sections generated in pipeline stage 2.",
+      "fields": [
+        {"name": "preconditions", "type": "list[str]", "note": "3-6 verifiable states, noun phrases"},
+        {"name": "minimal_guarantee", "type": "str", "note": "Cockburn: what system promises even on failure"},
+        {"name": "success_guarantee", "type": "str", "note": "Cockburn: what is true for all stakeholders after success"},
+        {"name": "normal_course", "type": "list[NormalCourseStep]", "note": "5-9 steps"},
+        {"name": "alternative_courses", "type": "list[AlternativeCourse]", "note": "Min 2"},
+        {"name": "postconditions", "type": "list[str]", "note": "3-5 verifiable outcomes"},
+        {"name": "information_requirements", "type": "list[InfoRequirement]"},
+        {"name": "nfr", "type": "list[NFREntry] | None"},
+        {"name": "state_machine", "type": "list[StateMachineState] | None", "note": "Only when primary entity has lifecycle states"},
+        {"name": "open_issues", "type": "list[str] | None", "note": "Cockburn open issues — questions for stakeholders"}
+      ]
+    },
+
+    "EntityField": {
+      "fields": [
+        {"name": "name", "type": "str", "note": "snake_case"},
+        {"name": "type", "type": "str", "allowed": ["UUID", "str", "int", "datetime", "bool", "decimal", "float"]},
+        {"name": "constraints", "type": "list[str]", "allowed": ["primary_key", "foreign_key", "not_null", "unique", "indexed"]}
+      ]
+    },
+
+    "Entity": {
+      "fields": [
+        {"name": "name", "type": "str", "note": "PascalCase"},
+        {"name": "fields", "type": "list[EntityField]"},
+        {"name": "relationships", "type": "list[str]", "example": ["belongs_to: Provider", "has_many: Appointments"]}
+      ]
+    },
+
+    "EntitiesResult": {
+      "fields": [
+        {"name": "entities", "type": "list[Entity]"}
+      ]
+    },
+
+    "UseCaseDocument": {
+      "docstring": "Complete output of generation pipeline. Returned by generator.generate().",
+      "fields": [
+        {"name": "metadata", "type": "IntakeResult"},
+        {"name": "sections", "type": "SectionsResult"},
+        {"name": "entities", "type": "EntitiesResult"},
+        {"name": "raw_markdown", "type": "str", "note": "Final assembled doc including YAML frontmatter"},
+        {"name": "generated_at", "type": "datetime", "note": "UTC"},
+        {"name": "provider", "type": "str"},
+        {"name": "model", "type": "str"},
+        {"name": "duration_ms", "type": "int"}
+      ]
+    },
+
+    "project_models": {
+      "note": "Models for ucgen.yaml project discovery file. Requires PyYAML optional dep.",
+
+      "ActorDefinition": {
+        "fields": [
+          {"name": "name", "type": "str"},
+          {"name": "description", "type": "str"},
+          {"name": "type", "type": "str", "default": "human", "allowed": ["human", "system", "external"]}
+        ]
+      },
+
+      "UseCaseDefinition": {
+        "fields": [
+          {"name": "id", "type": "str", "note": "User-defined e.g. UC-001"},
+          {"name": "title", "type": "str"},
+          {"name": "actor", "type": "str", "note": "Must match a name in project.actors"},
+          {"name": "goal", "type": "str"},
+          {"name": "priority", "type": "str", "default": "medium", "allowed": ["high", "medium", "low"]},
+          {"name": "tags", "type": "list[str]", "default": []},
+          {"name": "status", "type": "str", "default": "pending", "allowed": ["pending", "generated", "reviewed", "approved"]}
+        ]
+      },
+
+      "ProjectDefaults": {
+        "fields": [
+          {"name": "provider", "type": "str", "default": "ollama"},
+          {"name": "model", "type": "str", "default": "mistral"},
+          {"name": "template", "type": "str", "default": "default"},
+          {"name": "output_dir", "type": "Path", "default": "./use-cases"}
+        ]
+      },
+
+      "HooksConfig": {
+        "fields": [
+          {"name": "on_generate", "type": "str | None", "note": "Shell command after each use case. {uc_id}, {file} available."},
+          {"name": "on_batch_complete", "type": "str | None", "note": "Shell command after all. {count}, {project} available."}
+        ]
+      },
+
+      "ProjectDefinition": {
+        "fields": [
+          {"name": "project", "type": "dict", "keys": ["name", "domain", "stack", "version"]},
+          {"name": "defaults", "type": "ProjectDefaults"},
+          {"name": "actors", "type": "list[ActorDefinition]"},
+          {"name": "use_cases", "type": "list[UseCaseDefinition]"},
+          {"name": "knowledge", "type": "dict | None", "keys": ["active: list[str]"]},
+          {"name": "hooks", "type": "HooksConfig | None"}
+        ]
+      }
+    }
+  }
+}

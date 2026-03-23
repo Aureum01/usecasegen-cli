@@ -1,0 +1,52 @@
+# {{ intake.title }} (Enterprise)
+
+## Executive Summary
+- Actor: {{ intake.actor }}
+- Goal: {{ intake.goal }}
+- Domain: {{ intake.domain }}
+
+## Stakeholders
+{% for s in intake.stakeholders %}- {{ s.name }}: {{ s.interest }}
+{% endfor %}
+
+## Scale and NFR
+- Frequency: {{ intake.scale_hints.frequency if intake.scale_hints else "N/A" }}
+- Concurrent Users: {{ intake.scale_hints.concurrent_users if intake.scale_hints else "N/A" }}
+- Data Volume: {{ intake.scale_hints.data_volume if intake.scale_hints else "N/A" }}
+{% if sections.nfr %}{% for req in sections.nfr %}- {{ req.type }}: {{ req.requirement }}{% if req.threshold %} ({{ req.threshold }}){% endif %}
+{% endfor %}{% endif %}
+
+## Preconditions
+{% for item in sections.preconditions %}- {{ item }}
+{% endfor %}
+
+## Minimal Guarantee
+{{ sections.minimal_guarantee }}
+
+## Success Guarantee
+{{ sections.success_guarantee }}
+
+## Normal Course
+{% for step in sections.normal_course %}{{ step.step }}. {{ step.actor }}: {{ step.action }} -> {{ step.system_response }}
+{% endfor %}
+
+## Alternative Courses
+{% for alt in sections.alternative_courses %}- {{ alt.ref }}: {{ alt.condition }} - {{ alt.response }}
+{% endfor %}
+
+## State Machine
+{% if sections.state_machine %}{% for state in sections.state_machine %}- {{ state.state }} -> {{ state.transitions | join(", ") }}
+{% endfor %}{% else %}- None
+{% endif %}
+
+## Implied Entities
+{% for entity in entities.entities %}- {{ entity.name }}
+{% endfor %}
+
+## Architecture Notes
+- Service Boundary: {{ intake.system_boundary or "N/A" }}
+
+## Open Issues
+{% if sections.open_issues %}{% for issue in sections.open_issues %}- {{ issue }}
+{% endfor %}{% else %}- None
+{% endif %}

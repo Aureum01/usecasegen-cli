@@ -1,0 +1,42 @@
+{
+  "file": "modules/errors.json",
+  "python_file": "ucgen/errors.py",
+  "purpose": "All custom exception classes. Single file. All inherit from UCGenError.",
+
+  "hierarchy": {
+    "UCGenError(Exception)": {
+      "carries": ["message: str", "context: dict | None"],
+      "note": "Base for all ucgen errors",
+      "children": {
+        "ProviderUnavailableError": {
+          "carries": ["provider: str", "hint: str"],
+          "example": "ProviderUnavailableError(provider='ollama', hint='Is Ollama running? Try: ollama serve')"
+        },
+        "GenerationError": {
+          "carries": ["stage: str", "raw_output: str | None"],
+          "children": {
+            "IntakeParseError": "Stage 1 failed after retry",
+            "SectionsParseError": "Stage 2 failed after retry",
+            "EntitiesParseError": "Stage 3 failed after retry — non-fatal, has fallback"
+          }
+        },
+        "AssemblerError": {
+          "carries": ["template: str"],
+          "note": "Jinja2 rendering failure — should never happen with valid models"
+        },
+        "ConfigError": {
+          "carries": ["path: str"],
+          "note": "Invalid or unreadable .ucgenrc.toml"
+        },
+        "JSONExtractError": {
+          "carries": ["raw_preview: str"],
+          "note": "No valid JSON found in LLM output"
+        },
+        "ProjectFileError": {
+          "carries": ["path: str"],
+          "note": "ucgen.yaml missing, invalid, or PyYAML not installed"
+        }
+      }
+    }
+  }
+}

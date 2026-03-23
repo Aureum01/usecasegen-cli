@@ -1,0 +1,24 @@
+# {{ intake.title }} (API Focus)
+
+## Preconditions
+{% for item in sections.preconditions %}- {{ item }}
+{% endfor %}
+
+## Normal Course
+{% for step in sections.normal_course %}{{ step.step }}. {{ step.actor }}: {{ step.action }} -> {{ step.system_response }}
+{% endfor %}
+
+## API Spec Table
+| Step | Actor | Action | Response |
+|---|---|---|---|
+{% for step in sections.normal_course %}| {{ step.step }} | {{ step.actor }} | {{ step.action }} | {{ step.system_response }} |
+{% endfor %}
+
+## Implied Entities
+{% for entity in entities.entities %}- {{ entity.name }}
+{% endfor %}
+
+## NFR
+{% if sections.nfr %}{% for req in sections.nfr %}- {{ req.type }}: {{ req.requirement }}
+{% endfor %}{% else %}- None
+{% endif %}
