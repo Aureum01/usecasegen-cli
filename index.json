@@ -1,6 +1,6 @@
 {
   "project": "ucgen",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "language": "Python 3.11+",
   "description": "CLI tool that generates structured use case documents in markdown from natural language input. Supports local Ollama and remote APIs (Anthropic, OpenAI-compatible, Groq). Includes a project discovery file (ucgen.yaml) for team and enterprise workflows.",
 

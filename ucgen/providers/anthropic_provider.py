@@ -6,21 +6,19 @@ import asyncio
 import os
 import time
 from collections.abc import Iterable
-
-from anthropic import Anthropic
-from anthropic.types import MessageParam
+from typing import Any
 
 from ucgen.providers.base import BaseProvider, GenerationResult
 
 
 def _sync_anthropic_messages_create(
-    client: Anthropic,
+    client: Any,
     *,
     model: str,
     max_tokens: int,
     temperature: float,
     system: str,
-    messages: Iterable[MessageParam],
+    messages: Iterable[Any],
 ):
     """Run synchronous Anthropic messages.create (for asyncio.to_thread)."""
     return client.messages.create(
@@ -48,6 +46,8 @@ class AnthropicProvider(BaseProvider):
 
     def __init__(self, model: str = "claude-sonnet-4-6", api_key: str | None = None) -> None:
         """Initialize Anthropic provider."""
+        from anthropic import Anthropic
+
         self.model = model
         self._api_key = api_key
         key = api_key or os.getenv("ANTHROPIC_API_KEY")

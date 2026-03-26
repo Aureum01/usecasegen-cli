@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import time
 
-from openai import AsyncOpenAI
-
 from ucgen.providers.base import BaseProvider, GenerationResult
 
 
@@ -21,6 +19,8 @@ class OpenAICompatibleProvider(BaseProvider):
         provider_name: str = "openai",
     ) -> None:
         """Initialize OpenAI-compatible provider."""
+        from openai import AsyncOpenAI
+
         self.model = model
         self._provider_name = provider_name
         self.base_url = base_url

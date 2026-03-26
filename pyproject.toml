@@ -4,10 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ucgen"
-version = "0.1.0"
-description = "Generate structured use case documents from natural language input."
+version = "0.2.0"
+description = "CLI tool to generate Cockburn-style use case documents from natural language — works with Ollama, Anthropic, Groq, and OpenAI"
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = [
+  "use case",
+  "requirements",
+  "cockburn",
+  "documentation",
+  "cli",
+  "llm",
+  "ollama",
+  "anthropic",
+  "groq",
+  "business analyst",
+  "requirements engineering",
+  "natural language",
+]
 dependencies = [
   "typer[all]>=0.12",
   "httpx>=0.27",
@@ -17,6 +31,8 @@ dependencies = [
   "jinja2>=3.1",
   "rich>=13.7",
   "aiofiles>=23.0",
+  "python-docx>=1.1.0",
+  "tomli-w>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +61,13 @@ ucgen = "ucgen.cli:app"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = "ucgen.exporter_docx"
+disable_error_code = ["attr-defined"]
 
 [tool.ruff]
 line-length = 100

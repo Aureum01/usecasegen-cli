@@ -170,35 +170,44 @@ class SectionsResult(FrozenModel):
     def coerce_information_requirements(cls, v: Any) -> Any:
         if not isinstance(v, list):
             return v
-        coerced = []
+        coerced: list[dict[str, Any]] = []
         for item in v:
             if isinstance(item, dict):
+                # Derive data_needed from either data_needed or name and drop rows
+                # that have no meaningful content.
+                raw_data = item.get("data_needed") or item.get("name") or ""
+                data_needed = str(raw_data).strip()
+                if not data_needed:
+                    continue
+                # Mistral {name, source} shape — remap to a consistent structure.
                 if "name" in item and "step" not in item and "data_needed" not in item:
-                    # Mistral {name, source} shape — remap
                     coerced.append(
                         {
                             "step": 0,
-                            "data_needed": item.get("name", ""),
+                            "data_needed": data_needed,
                             "source": item.get("source") or None,
                             "format": None,
                         }
                     )
                 else:
-                    # qwen3 / correct shape — normalise and fill defaults
+                    # qwen3 / correct shape — normalise and fill defaults.
                     raw_step = item.get("step", 0)
                     coerced.append(
                         {
                             "step": int(raw_step) if str(raw_step).isdigit() else 0,
-                            "data_needed": item.get("data_needed", ""),
+                            "data_needed": data_needed,
                             "source": item.get("source") or None,
                             "format": item.get("format") or None,
                         }
                     )
             elif isinstance(item, str):
+                value = item.strip()
+                if not value:
+                    continue
                 coerced.append(
                     {
                         "step": 0,
-                        "data_needed": item,
+                        "data_needed": value,
                         "source": None,
                         "format": None,
                     }
@@ -307,3 +316,52 @@ class ProjectDefinition(FrozenModel):
     use_cases: list[UseCaseDefinition] = Field(default_factory=list)
     knowledge: dict | None = None
     hooks: HooksConfig | None = None
+
+
+class DiscoveredUseCase(BaseModel):
+    """A single use case proposed by Stage 0 discovery."""
+
+    title: str
+    actor: str
+    goal_level: str = "user-goal"
+    priority: str = "medium"
+
+
+class DiscoveryResult(BaseModel):
+    """Result of Stage 0 — proposed use case set for an input idea."""
+
+    system_summary: str
+    use_cases: list[DiscoveredUseCase]
+
+    @field_validator("use_cases", mode="before")
+    @classmethod
+    def ensure_list(cls, v: Any) -> list:
+        if not isinstance(v, list):
+            return []
+        return v
+
+
+__all__ = [
+    "ActorDefinition",
+    "AlternativeCourse",
+    "DiscoveryResult",
+    "DiscoveredUseCase",
+    "EntitiesResult",
+    "Entity",
+    "EntityField",
+    "FrozenModel",
+    "HooksConfig",
+    "InfoRequirement",
+    "IntakeResult",
+    "NFREntry",
+    "NormalCourseStep",
+    "ProjectDefaults",
+    "ProjectDefinition",
+    "ProjectMetadata",
+    "ScaleHints",
+    "SectionsResult",
+    "StakeholderEntry",
+    "StateMachineState",
+    "UseCaseDefinition",
+    "UseCaseDocument",
+]

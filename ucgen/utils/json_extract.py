@@ -7,6 +7,8 @@ import re
 
 from ucgen.errors import JSONExtractError
 
+_JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
+
 
 def extract_json(raw: str) -> dict:
     """Extract the outermost JSON object from model output text.
@@ -21,7 +23,7 @@ def extract_json(raw: str) -> dict:
         JSONExtractError: If no valid JSON object is found.
     """
     cleaned = raw.replace("```json", "").replace("```", "").strip()
-    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    match = _JSON_OBJECT_RE.search(cleaned)
     if not match:
         raise JSONExtractError(
             message="No JSON object found in model output.", raw_preview=raw[:500]

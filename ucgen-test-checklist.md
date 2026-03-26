@@ -40,7 +40,7 @@ python -m ucgen version
 ```
 
 - [ ] `--help` shows at least these commands: `generate`, `run`, `status`, `batch`, `validate`, `init`, `init-project`, `log`, `version` (plus `gc` if present)
-- [ ] `version` prints `ucgen v0.1.0`
+- [ ] `version` prints `ucgen v0.2.0`
 - [ ] `version` shows provider status table
 - [ ] Ollama shows `✓` in the status table
 - [ ] Anthropic / OpenAI / Groq show `✗` (no keys set — expected)
@@ -92,7 +92,7 @@ Open the generated file and check each section:
 - [ ] `actor` present — should be a role (e.g. `Patient`), not a person name
 - [ ] `domain` present (e.g. `healthcare`)
 - [ ] `status: draft`
-- [ ] `generator: ucgen/0.1.0`
+- [ ] `generator: ucgen/0.2.0`
 - [ ] Closes with `---` before document body
 
 **Preconditions**
@@ -408,4 +408,4 @@ If the answer to the last item is no — open `ucgen/prompts/stage2_sections.md`
 
 ---
 
-*ucgen v0.1.0 — Ollama test run*
+*ucgen v0.2.0 — Ollama test run*

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging
+import re
 import socket
 import time
-
-import httpx
 
 from ucgen.providers.base import BaseProvider, GenerationResult
 
 logger = logging.getLogger(__name__)
+
+_THINK_BLOCK_RE = re.compile("`" + "think" + ".*?" + "`" + "think" + "`", re.DOTALL)
 
 
 class OllamaProvider(BaseProvider):
@@ -44,7 +45,7 @@ class OllamaProvider(BaseProvider):
         max_tokens: int = 2000,
     ) -> GenerationResult:
         """Generate model output from Ollama chat endpoint."""
-        import re
+        import httpx
 
         started = time.perf_counter()
         payload = {
@@ -59,8 +60,8 @@ class OllamaProvider(BaseProvider):
             response.raise_for_status()
             data = response.json()
         content = data["message"]["content"]
-        # Strip <think>...</think> blocks emitted by reasoning models (qwen3, deepseek-r1)
-        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        # Strip </think> blocks emitted by reasoning models (qwen3, deepseek-r1)
+        content = _THINK_BLOCK_RE.sub("", content).strip()
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.debug("Ollama response received in %d ms", elapsed_ms)
         return GenerationResult(

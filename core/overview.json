@@ -58,7 +58,7 @@
   ],
 
   "module_map": {
-    "ucgen/__init__.py": "Package version export only. __version__ = '0.1.0'",
+    "ucgen/__init__.py": "Package version export only. __version__ = '0.2.0'",
     "ucgen/cli.py": "Typer CLI. All commands. Zero business logic — delegates entirely.",
     "ucgen/generator.py": "Orchestrates 4-stage pipeline. Only module that calls providers.",
     "ucgen/assembler.py": "Pure Python Jinja2 renderer. No LLM. Takes all stage results, returns markdown string.",

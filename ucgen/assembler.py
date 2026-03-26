@@ -26,7 +26,7 @@ def _yaml_scalar(value: Any) -> str:
     if isinstance(value, (int, float)):
         return str(value)
     text = str(value)
-    if text == "":
+    if not text:
         return '""'
     if any(ch in text for ch in [":", "#", "{", "}", "[", "]", ","]) or text.strip() != text:
         return f'"{text.replace(chr(34), chr(92) + chr(34))}"'

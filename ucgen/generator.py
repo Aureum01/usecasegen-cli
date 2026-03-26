@@ -18,14 +18,23 @@ from ucgen.errors import (
     IntakeParseError,
     ProviderUnavailableError,
     SectionsParseError,
+    UCGenError,
 )
 from ucgen.providers.base import BaseProvider
-from ucgen.schema import EntitiesResult, IntakeResult, SectionsResult, UseCaseDocument
+from ucgen.schema import (
+    DiscoveryResult,
+    EntitiesResult,
+    IntakeResult,
+    SectionsResult,
+    UseCaseDocument,
+)
 from ucgen.utils.id_counter import next_id
 from ucgen.utils.json_extract import extract_json
 from ucgen.utils.prompt_loader import load_prompt
 
 logger = logging.getLogger(__name__)
+
+_DURATION_LINE_RE = re.compile(r"^duration_ms:\s*\d+\s*$", flags=re.MULTILINE)
 
 
 def _save_debug(output_dir: Path, filename: str, raw_output: str) -> None:
@@ -49,6 +58,7 @@ async def _call_with_retry(
     stage_name: str,
     temperature: float = 0.3,
     max_tokens: int = 2000,
+    on_retry: Callable[[], None] | None = None,
 ) -> str:
     """Call provider with one retry on failure."""
     try:
@@ -58,6 +68,8 @@ async def _call_with_retry(
         return result.content
     except Exception as exc:
         logger.warning("First call failed for stage=%s, retrying: %s", stage_name, exc)
+        if on_retry is not None:
+            on_retry()
         try:
             result = await provider.generate(
                 system=system,
@@ -99,11 +111,50 @@ async def _run_intake(
         ) from exc
 
 
+async def _run_discovery(
+    idea: str,
+    config: Config,
+    provider: BaseProvider,
+) -> DiscoveryResult:
+    """
+    Stage 0 — AI-driven use case discovery.
+
+    This runs before the existing 4-stage pipeline and proposes a set of use
+    cases for the given idea. It retries once with lower temperature if parsing
+    fails or the model response is not valid for ``DiscoveryResult``.
+    """
+    system = load_prompt("system_base", config.custom_prompts_dir)
+    prompt_template = load_prompt("stage0_discover", config.custom_prompts_dir)
+    user = prompt_template.replace("{idea}", idea)
+    last_error: Exception | None = None
+    for attempt in range(1, 3):
+        try:
+            result = await provider.generate(
+                system=system,
+                user=user,
+                temperature=config.temperature if attempt == 1 else 0.1,
+                max_tokens=min(config.max_tokens, 2000),
+            )
+            payload = extract_json(result.content)
+            return DiscoveryResult.model_validate(payload)
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Discovery parse failed attempt=%d: %s", attempt, exc)
+            continue
+    raise UCGenError(
+        message=(
+            "Stage 0 discovery failed after 2 attempts. "
+            "Try rephrasing your idea or use a different provider."
+        )
+    ) from last_error
+
+
 async def _run_sections(
     intake: IntakeResult,
     config: Config,
     provider: BaseProvider,
     debug: bool = False,
+    on_provider_retry: Callable[[str, int], None] | None = None,
 ) -> SectionsResult:
     system = load_prompt("system_base", config.custom_prompts_dir)
     intake_json = json.dumps(intake.model_dump(), ensure_ascii=True)
@@ -113,8 +164,19 @@ async def _run_sections(
     user = user.replace("{intake_json.domain}", str(intake.domain))
     user = user.replace("{intake_json.actor}", str(intake.actor))
     user = user.replace("{intake_json.goal}", str(intake.goal))
+
+    def _sections_retry_notice() -> None:
+        if on_provider_retry is not None:
+            on_provider_retry("sections", 2)
+
     raw = await _call_with_retry(
-        provider, system, user, "sections", config.temperature, config.max_tokens
+        provider,
+        system,
+        user,
+        "sections",
+        config.temperature,
+        config.max_tokens,
+        on_retry=_sections_retry_notice if on_provider_retry else None,
     )
     try:
         payload = extract_json(raw)
@@ -175,7 +237,8 @@ async def generate(
     idea: str,
     config: Config,
     provider: BaseProvider,
-    on_stage_complete: Callable[[int], None] | None = None,
+    on_stage_complete: Callable[[int, float], None] | None = None,
+    on_provider_retry: Callable[[str, int], None] | None = None,
     debug: bool = False,
 ) -> UseCaseDocument:
     """Run full sequential generation pipeline.
@@ -201,23 +264,33 @@ async def generate(
         )
     started = time.perf_counter()
     uc_id = next_id(config.output_dir, prefix=config.id_prefix)
+    stage_t0 = time.perf_counter()
     intake = await _run_intake(idea, uc_id, config, provider, debug=debug)
     if on_stage_complete is not None:
-        on_stage_complete(1)
-    sections = await _run_sections(intake, config, provider, debug=debug)
+        on_stage_complete(1, time.perf_counter() - stage_t0)
+    stage_t0 = time.perf_counter()
+    sections = await _run_sections(
+        intake,
+        config,
+        provider,
+        debug=debug,
+        on_provider_retry=on_provider_retry,
+    )
     if on_stage_complete is not None:
-        on_stage_complete(2)
+        on_stage_complete(2, time.perf_counter() - stage_t0)
+    stage_t0 = time.perf_counter()
     entities = await _run_entities(intake, sections, config, provider, debug=debug)
     if on_stage_complete is not None:
-        on_stage_complete(3)
+        on_stage_complete(3, time.perf_counter() - stage_t0)
+    stage_t0 = time.perf_counter()
     raw_markdown = assemble(intake, sections, entities, config, duration_ms=0)
+    if on_stage_complete is not None:
+        on_stage_complete(4, time.perf_counter() - stage_t0)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
-    raw_markdown = re.sub(
-        r"^duration_ms:\s*\d+\s*$",
+    raw_markdown = _DURATION_LINE_RE.sub(
         f"duration_ms: {elapsed_ms}",
         raw_markdown,
         count=1,
-        flags=re.MULTILINE,
     )
     return UseCaseDocument(
         metadata=intake,
